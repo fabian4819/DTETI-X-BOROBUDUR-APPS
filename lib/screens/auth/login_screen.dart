@@ -31,17 +31,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   children: [
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 100,
+                      height: 100,
                       decoration: BoxDecoration(
                         gradient: AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(
-                        Icons.temple_buddhist,
-                        size: 40,
-                        color: Colors.white,
-                      ),
+                      child: Image.asset(
+                            'assets/images/splash-screen.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.temple_buddhist,
+                                size: 60,
+                                color: AppColors.primary,
+                              );
+                            },
+                          ),
                     ),
                     const SizedBox(height: 24),
                     const Text(

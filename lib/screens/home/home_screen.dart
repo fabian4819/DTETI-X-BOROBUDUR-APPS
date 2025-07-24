@@ -86,9 +86,9 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 30),
-              
+
               // Quick access menu
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -144,7 +144,9 @@ class HomeScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const BorobudurpediaMainScreen(),
+                                builder:
+                                    (context) =>
+                                        const BorobudurpediaMainScreen(),
                               ),
                             );
                           },
@@ -164,9 +166,9 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 30),
-              
+
               // Popular destinations
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -202,9 +204,7 @@ class HomeScreen extends StatelessWidget {
                         itemBuilder: (context, index) {
                           return Container(
                             width: 300,
-                            margin: EdgeInsets.only(
-                              right: index < 2 ? 16 : 0,
-                            ),
+                            margin: EdgeInsets.only(right: index < 2 ? 16 : 0),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
@@ -248,7 +248,8 @@ class HomeScreen extends StatelessWidget {
                                     left: 20,
                                     right: 20,
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Text(
                                           'Stupa Induk',
@@ -273,10 +274,15 @@ class HomeScreen extends StatelessWidget {
                                             onPressed: () {},
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Colors.white,
-                                              foregroundColor: AppColors.primary,
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              foregroundColor:
+                                                  AppColors.primary,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(10),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                               ),
                                             ),
                                             child: const Text(
@@ -300,9 +306,9 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 30),
-              
+
               // Latest agenda
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -320,9 +326,7 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     const Text(
                       'Jangan sampai terlewat',
-                      style: TextStyle(
-                        color: AppColors.mediumGray,
-                      ),
+                      style: TextStyle(color: AppColors.mediumGray),
                     ),
                     const SizedBox(height: 16),
                     Container(
@@ -399,7 +403,7 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 30),
             ],
           ),
@@ -419,30 +423,28 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 55,
+            height: 55,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: color.withOpacity(0.2),
-                width: 1,
-              ),
+              border: Border.all(color: color.withOpacity(0.2), width: 1),
             ),
-            child: Icon(
-              icon,
-              size: 28,
-              color: color,
-            ),
+            child: Icon(icon, size: 28, color: color),
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.darkGray,
+          const SizedBox(height: 4),
+          Expanded(
+            // <--- Added Expanded here
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.darkGray,
+              ),
             ),
           ),
         ],
