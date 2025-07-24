@@ -9,7 +9,7 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final categories = [
       Category(name: 'Alat', count: 156, icon: '🔧'),
-      Category(name: 'Arsitektur Candi', count: 80, icon: '🏛️'),
+      Category(name: 'Arsitektur', count: 80, icon: '🏛️'),
       Category(name: 'Bahan', count: 80, icon: '🧱'),
       Category(name: 'Budha', count: 51, icon: '🧘'),
       Category(name: 'Fauna', count: 7, icon: '🐘'),
@@ -31,7 +31,7 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
         ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,10 +46,7 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
             ),
             const Text(
               'Apa yang ingin kamu pelajari?',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.mediumGray,
-              ),
+              style: TextStyle(fontSize: 16, color: AppColors.mediumGray),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -61,20 +58,20 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.85,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                ),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  return _buildCategoryCard(category);
-                },
+            GridView.builder(
+              shrinkWrap: true, // penting!
+              physics: const NeverScrollableScrollPhysics(), // penting!
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.85,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
               ),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return _buildCategoryCard(category);
+              },
             ),
           ],
         ),
@@ -97,10 +94,11 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Expanded(
-            flex: 3,
+          // Ganti Expanded menjadi SizedBox
+          SizedBox(
+            height: 70, // atur tinggi sesuai kebutuhan
+            width: double.infinity,
             child: Container(
-              width: double.infinity,
               decoration: const BoxDecoration(
                 color: AppColors.mediumGray,
                 borderRadius: BorderRadius.only(
@@ -116,51 +114,46 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    category.name,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkGray,
-                    ),
+          // Ganti Expanded menjadi Flexible atau hapus saja
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  category.name,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.darkGray,
                   ),
-                  Text(
-                    '${category.count} Ensiklopedia',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.mediumGray,
-                    ),
+                ),
+                Text(
+                  '${category.count} Ensiklopedia',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.mediumGray,
                   ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Pelajari',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                        ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
+                    child: const Text(
+                      'Pelajari',
+                      style: TextStyle(fontSize: 12, color: Colors.white),
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

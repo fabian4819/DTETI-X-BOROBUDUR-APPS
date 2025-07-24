@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../../utils/app_colors.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -27,29 +28,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 15),
               Center(
                 child: Column(
                   children: [
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 100,
+                      height: 100,
                       decoration: BoxDecoration(
                         gradient: AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(
-                        Icons.temple_buddhist,
-                        size: 40,
-                        color: Colors.white,
+                      child: Image.asset(
+                        'assets/images/splash-screen.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.temple_buddhist,
+                            size: 60,
+                            color: AppColors.primary,
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'Bergabung Seperti\nLainnya!',
+                      'Bergabung Seperti Lainnya!',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.darkGray,
                       ),
@@ -66,7 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              
+
               // Toggle buttons
               Container(
                 decoration: BoxDecoration(
@@ -85,9 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: const Text(
                             'Masuk',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppColors.mediumGray,
-                            ),
+                            style: TextStyle(color: AppColors.mediumGray),
                           ),
                         ),
                       ),
@@ -119,114 +124,146 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Name field
               const Text(
                 'Nama Lengkap',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
                 ),
               ),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  hintText: 'Masukkan nama lengkap anda',
-                  prefixIcon: Icon(Icons.person_outline, color: AppColors.mediumGray),
+              SizedBox(
+                width: double.infinity, // lebar penuh
+                height: 45, // tinggi 45
+                child: TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    hintText: 'Masukkan nama lengkap anda',
+                    prefixIcon: Icon(
+                      Icons.person_outline,
+                      color: AppColors.mediumGray,
+                    ),
+                  ),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Email field
               const Text(
                 'Email',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
                 ),
               ),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  hintText: 'Masukkan alamat email anda',
-                  prefixIcon: Icon(Icons.email_outlined, color: AppColors.mediumGray),
+              SizedBox(
+                width: double.infinity, // lebar penuh
+                height: 45, // tinggi 45
+                child: TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    hintText: 'Masukkan alamat email anda',
+                    prefixIcon: Icon(
+                      Icons.email_outlined,
+                      color: AppColors.mediumGray,
+                    ),
+                  ),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Password field
               const Text(
                 'Password',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
                 ),
               ),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan password anda',
-                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.mediumGray),
-                  suffixIcon: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                    icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              SizedBox(
+                width: double.infinity, // lebar penuh
+                height: 45, // tinggi 45
+                child: TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan password anda',
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
                       color: AppColors.mediumGray,
+                    ),
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: AppColors.mediumGray,
+                      ),
                     ),
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Confirm Password field
               const Text(
                 'Konfirmasi Password',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
                 ),
               ),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan password anda',
-                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.mediumGray),
-                  suffixIcon: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                      });
-                    },
-                    icon: Icon(
-                      _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+              SizedBox(
+                width: double.infinity, // lebar penuh
+                height: 45, // tinggi 45
+                child: TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan password anda',
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
                       color: AppColors.mediumGray,
+                    ),
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscureConfirmPassword = !_obscureConfirmPassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: AppColors.mediumGray,
+                      ),
                     ),
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Register button
               SizedBox(
                 width: double.infinity,
@@ -241,12 +278,80 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                   child: const Text(
                     'Daftar',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
+              ),
+
+              const SizedBox(height: 24),
+
+              const Center(
+                child: Text(
+                  'Atau masuk dengan',
+                  style: TextStyle(color: AppColors.mediumGray),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Social login buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {},
+                      icon: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 2,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: FaIcon(
+                            FontAwesomeIcons.google,
+                            color: Colors.red,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      label: const Text('Google'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: AppColors.lightGray),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // const SizedBox(width: 16),
+                  // Expanded(
+                  //   child: OutlinedButton.icon(
+                  //     onPressed: () {},
+                  //     icon: Container(
+                  //       width: 20,
+                  //       height: 20,
+                  //       color: AppColors.mediumGray,
+                  //     ),
+                  //     label: const Text('Facebook'),
+                  //     style: OutlinedButton.styleFrom(
+                  //       padding: const EdgeInsets.symmetric(vertical: 16),
+                  //       side: const BorderSide(color: AppColors.lightGray),
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(12),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
+                ],
               ),
             ],
           ),

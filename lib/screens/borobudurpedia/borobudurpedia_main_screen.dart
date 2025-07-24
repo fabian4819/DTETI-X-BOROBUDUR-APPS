@@ -6,10 +6,11 @@ class BorobudurpediaMainScreen extends StatelessWidget {
   const BorobudurpediaMainScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: AppColors.background,
+    body: SafeArea(
+      child: SingleChildScrollView( // Tambahkan ini
         child: Column(
           children: [
             // Header
@@ -69,10 +70,10 @@ class BorobudurpediaMainScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(25),
-                    ),
+                    // decoration: BoxDecoration(
+                    //   color: Colors.white,
+                    //   borderRadius: BorderRadius.circular(25),
+                    // ),
                     child: const TextField(
                       decoration: InputDecoration(
                         hintText: 'Cari di sini',
@@ -197,11 +198,12 @@ class BorobudurpediaMainScreen extends StatelessWidget {
                 ],
               ),
             ),
-          ],
+           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStatItem(String count, String label) {
     return Column(
