@@ -41,7 +41,7 @@ class HomeScreen extends StatelessWidget {
                                 ),
                               ),
                               const Text(
-                                'Hanifah Putri!',
+                                'Habib Fabian!',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,

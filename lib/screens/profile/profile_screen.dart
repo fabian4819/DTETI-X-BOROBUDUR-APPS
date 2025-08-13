@@ -75,7 +75,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Hanifah Putri',
+                    'Habib Fabian',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -84,7 +84,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'hanifah.putri@email.com',
+                    'habib.fabian@email.com',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.mediumGray,

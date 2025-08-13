@@ -11,6 +11,9 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.6
   font_awesome_flutter: ^10.7.0
+  collection: ^1.18.0
+  geolocator: ^10.1.0
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:
