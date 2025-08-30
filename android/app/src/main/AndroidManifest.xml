@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="borobudur_dteti_apps"
+        android:label="Borobudur Explorer"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
