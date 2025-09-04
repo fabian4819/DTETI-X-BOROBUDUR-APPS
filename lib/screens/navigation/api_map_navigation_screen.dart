@@ -549,32 +549,35 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
       }
     }
 
+    // Show route preview modal first
+    _showRoutePreviewModal();
+  }
+  
+  Future<void> _showRoutePreviewModal() async {
     setState(() {
       _showLoadingOverlay = true;
     });
 
     try {
-      NavigationResult result;
+      // Calculate route first to get preview data
+      NavigationResult previewResult;
       
       if (useCurrentLocation) {
-        // Start from current GPS location
-        result = await _navigationService.startNavigation(
+        previewResult = await _navigationService.startNavigation(
           fromLat: _currentPosition!.latitude,
           fromLon: _currentPosition!.longitude,
           toNode: destinationNode,
           toFeature: destinationFeature,
         );
       } else {
-        // Start from custom location (node or feature)
         if (startNode != null) {
-          result = await _navigationService.startNavigation(
+          previewResult = await _navigationService.startNavigation(
             fromNode: startNode,
             toNode: destinationNode,
             toFeature: destinationFeature,
           );
         } else {
-          // Start from feature location
-          result = await _navigationService.startNavigation(
+          previewResult = await _navigationService.startNavigation(
             fromLat: startFeature!.latitude,
             fromLon: startFeature!.longitude,
             toNode: destinationNode,
@@ -583,23 +586,21 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
         }
       }
 
-      if (result.success && result.path != null) {
-        setState(() {
-          isNavigating = true;
-          _currentRoute = result.path!;
-          _setupPolylines(); // Update polylines with route
-        });
-        _showMessage('Navigasi dimulai', Colors.green);
-        _speakInstruction('Navigasi dimulai. Ikuti petunjuk suara untuk mencapai tujuan.');
-      } else {
-        _showMessage(result.message, Colors.red);
-      }
-    } catch (e) {
-      _showMessage('Gagal memulai navigasi: $e', Colors.red);
-    } finally {
       setState(() {
         _showLoadingOverlay = false;
       });
+
+      if (previewResult.success) {
+        // Show the beautiful preview modal
+        _showRoutePreviewDialog(previewResult);
+      } else {
+        _showMessage(previewResult.message, Colors.red);
+      }
+    } catch (e) {
+      setState(() {
+        _showLoadingOverlay = false;
+      });
+      _showMessage('Gagal menghitung rute: $e', Colors.red);
     }
   }
   
@@ -623,6 +624,502 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+  
+  void _showRoutePreviewDialog(NavigationResult result) {
+    final distance = result.totalDistance?.toStringAsFixed(0) ?? '0';
+    final timeMinutes = ((result.estimatedTime ?? 0) / 60).ceil();
+    final timeText = timeMinutes < 1 ? '< 1 menit' : '$timeMinutes menit';
+    
+    String startLocationName = '';
+    String destinationName = '';
+    
+    if (useCurrentLocation) {
+      startLocationName = 'Lokasi Anda Saat Ini';
+    } else {
+      startLocationName = startNode?.name ?? startFeature?.name ?? 'Lokasi Kustom';
+    }
+    
+    destinationName = destinationNode?.name ?? destinationFeature?.name ?? 'Tujuan';
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with gradient
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.route,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Preview Rute Navigasi',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Route info cards
+                    _buildRouteInfoCard(
+                      icon: Icons.my_location,
+                      iconColor: Colors.green,
+                      title: 'Dari',
+                      subtitle: startLocationName,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.arrow_downward,
+                              color: AppColors.accent,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Rute Terpendek',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    _buildRouteInfoCard(
+                      icon: Icons.location_on,
+                      iconColor: Colors.red,
+                      title: 'Ke',
+                      subtitle: destinationName,
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Distance and time stats
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.1),
+                            AppColors.accent.withValues(alpha: 0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatItem(
+                              icon: Icons.straighten,
+                              label: 'Jarak',
+                              value: '${distance}m',
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: 40,
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                          ),
+                          Expanded(
+                            child: _buildStatItem(
+                              icon: Icons.access_time,
+                              label: 'Estimasi Waktu',
+                              value: timeText,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Route preview minimap (simplified)
+                    Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Stack(
+                          children: [
+                            // Background pattern
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.grey.withValues(alpha: 0.1),
+                                    Colors.grey.withValues(alpha: 0.05),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                            ),
+                            
+                            // Route visualization (simplified)
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    // Start point
+                                    Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.green.withValues(alpha: 0.3),
+                                                blurRadius: 6,
+                                                spreadRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Icon(
+                                            Icons.my_location,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                          'Start',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    // Route line
+                                    Expanded(
+                                      child: Container(
+                                        height: 3,
+                                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [Colors.green, AppColors.primary, Colors.red],
+                                          ),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                    ),
+                                    
+                                    // End point
+                                    Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.red.withValues(alpha: 0.3),
+                                                blurRadius: 6,
+                                                spreadRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Icon(
+                                            Icons.location_on,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                          'Tujuan',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            
+                            // Overlay text
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'Preview Rute',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Action buttons
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                          ),
+                        ),
+                        child: const Text(
+                          'Batal',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _confirmStartNavigation(result);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.navigation, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Mulai Navigasi',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildRouteInfoCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: iconColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+  
+  Future<void> _confirmStartNavigation(NavigationResult result) async {
+    setState(() {
+      isNavigating = true;
+      _currentRoute = result.path ?? [];
+      _setupPolylines();
+    });
+    
+    _showMessage(
+      'Navigasi dimulai! Jarak: ${(result.totalDistance ?? 0).toStringAsFixed(0)}m',
+      Colors.green,
+    );
+    
+    // Start simulation for testing
+    _navigationService.startDummyNavigationSimulation();
+    
+    // Speak initial instruction
+    if (_isVoiceEnabled) {
+      await _speakInstruction('Navigasi dimulai. Ikuti petunjuk arah.');
+    }
   }
   
   void _showLocationPermissionDialog() {
