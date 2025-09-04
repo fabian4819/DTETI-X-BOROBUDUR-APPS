@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
-import 'navigation_screen.dart';
+import 'api_map_navigation_screen.dart';
 import 'enhanced_navigation_screen.dart';
 import 'free_navigation_screen.dart';
 
@@ -101,7 +101,7 @@ class NavigationSelectionScreen extends StatelessWidget {
               ],
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const NavigationScreen()),
+                MaterialPageRoute(builder: (context) => const ApiMapNavigationScreen()),
               ),
             ),
             

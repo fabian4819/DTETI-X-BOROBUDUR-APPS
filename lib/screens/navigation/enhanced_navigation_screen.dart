@@ -9,7 +9,7 @@ import '../../services/navigation_service.dart';
 import '../../services/voice_guidance_service.dart';
 import '../../services/custom_marker_service.dart';
 import '../../utils/app_colors.dart';
-import '../navigation/navigation_screen.dart';
+import 'temple_navigation_screen.dart';
 
 class EnhancedNavigationScreen extends StatefulWidget {
   const EnhancedNavigationScreen({super.key});
@@ -498,7 +498,7 @@ class _EnhancedNavigationScreenState extends State<EnhancedNavigationScreen>
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const NavigationScreen()),
+                MaterialPageRoute(builder: (context) => const TempleNavigationScreen()),
               );
             },
           ),
