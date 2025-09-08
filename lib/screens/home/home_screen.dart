@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../borobudurpedia/borobudurpedia_main_screen.dart';
+import '../navigation/navigation_selection_screen.dart';
+import '../news/news_screen.dart';
+import '../agenda/agenda_screen.dart';
+import '../facilities/facilities_screen.dart';
+import '../profile/profile_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
 
@@ -105,62 +110,110 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    GridView.count(
-                      crossAxisCount: 4,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
+                    // First row - 3 items
+                    Row(
                       children: [
-                        _buildQuickAccessItem(
-                          icon: Icons.confirmation_number,
-                          label: 'Harga Tiket',
-                          color: AppColors.accent,
+                        Expanded(
+                          child: _buildQuickAccessItem(
+                            icon: Icons.navigation,
+                            label: 'Navigasi',
+                            color: AppColors.primary,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const NavigationSelectionScreen(),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                        _buildQuickAccessItem(
-                          icon: Icons.location_on,
-                          label: 'Fasilitas',
-                          color: AppColors.success,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAccessItem(
+                            icon: Icons.menu_book,
+                            label: 'Ensiklopedia',
+                            color: AppColors.secondary,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const BorobudurpediaMainScreen(),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                        _buildQuickAccessItem(
-                          icon: Icons.hotel,
-                          label: 'Akomodasi',
-                          color: AppColors.warning,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAccessItem(
+                            icon: Icons.article,
+                            label: 'Berita',
+                            color: AppColors.accent,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const NewsScreen(),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                        _buildQuickAccessItem(
-                          icon: Icons.view_in_ar,
-                          label: 'AR',
-                          color: AppColors.error,
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Second row - 3 items
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildQuickAccessItem(
+                            icon: Icons.event,
+                            label: 'Agenda',
+                            color: AppColors.warning,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AgendaScreen(),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                        _buildQuickAccessItem(
-                          icon: Icons.support_agent,
-                          label: 'Aduan',
-                          color: AppColors.primary,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAccessItem(
+                            icon: Icons.location_city,
+                            label: 'Fasilitas',
+                            color: AppColors.success,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const FacilitiesScreen(),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                        _buildQuickAccessItem(
-                          icon: Icons.menu_book,
-                          label: 'Borobudurpedia',
-                          color: AppColors.secondary,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (context) =>
-                                        const BorobudurpediaMainScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        _buildQuickAccessItem(
-                          icon: Icons.photo_library,
-                          label: 'Galeri',
-                          color: AppColors.accent,
-                        ),
-                        _buildQuickAccessItem(
-                          icon: Icons.more_horiz,
-                          label: 'Lainnya',
-                          color: AppColors.mediumGray,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAccessItem(
+                            icon: Icons.person,
+                            label: 'Profil',
+                            color: AppColors.error,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ProfileScreen(),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -421,34 +474,53 @@ class HomeScreen extends StatelessWidget {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 55,
-            height: 55,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: color.withOpacity(0.2), width: 1),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Icon(icon, size: 28, color: color),
+          ],
+          border: Border.all(
+            color: color.withOpacity(0.1),
+            width: 1,
           ),
-          const SizedBox(height: 4),
-          Expanded(
-            // <--- Added Expanded here
-            child: Text(
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                icon, 
+                size: 24, 
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
               label,
               textAlign: TextAlign.center,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
                 color: AppColors.darkGray,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import '../../models/temple_node.dart';
 import '../../services/temple_navigation_service.dart';
 import '../../utils/app_colors.dart';
+import '../../config/map_config.dart';
 
 class ApiMapNavigationScreen extends StatefulWidget {
   const ApiMapNavigationScreen({super.key});
@@ -53,9 +54,9 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   
-  // Map settings
-  String _currentTileLayer = 'OpenStreetMap';
-  static const double _initialZoom = 18.0;
+  // Map settings - default to Satellite for better Borobudur visualization
+  String _currentTileLayer = MapConfig.isMapTilerConfigured ? 'MapTiler Satellite' : MapConfig.availableLayers.first;
+  static const double _initialZoom = MapConfig.defaultZoom;
   
   // Borobudur center coordinates
   static const LatLng _borobudurCenter = LatLng(-7.607874, 110.203751);
@@ -514,14 +515,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   }
   
   String _getTileTemplate() {
-    switch (_currentTileLayer) {
-      case 'OpenStreetMap':
-        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-      case 'Satellite':
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      default:
-        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-    }
+    return MapConfig.getTileUrl(_currentTileLayer);
   }
   
   void _onMapTapped(TapPosition tapPosition, LatLng point) {
@@ -1416,10 +1410,15 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                 _currentTileLayer = layer;
               });
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'OpenStreetMap', child: Text('OpenStreetMap')),
-              const PopupMenuItem(value: 'Satellite', child: Text('Satellite')),
-            ],
+            itemBuilder: (context) => MapConfig.availableLayers.map((layer) => 
+              PopupMenuItem(
+                value: layer, 
+                child: Text(layer == 'OpenStreetMap' && MapConfig.availableLayers.length == 1 
+                    ? 'OpenStreetMap (Configure MapTiler for better maps)'
+                    : layer
+                )
+              )
+            ).toList(),
           ),
         ],
       ),
@@ -1478,7 +1477,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                 children: [
                   TileLayer(
                     urlTemplate: _getTileTemplate(),
-                    userAgentPackageName: 'com.example.borobudur_app',
+                    userAgentPackageName: MapConfig.userAgent,
                     maxNativeZoom: 19,
                   ),
                   PolylineLayer(polylines: _polylines),
