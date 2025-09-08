@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui'; // Import for ImageFilter
-import 'auth/login_screen.dart';
+import 'auth_wrapper.dart';
 import '../utils/app_colors.dart';
 
 class OnboardingScreen extends StatelessWidget {
@@ -74,7 +74,7 @@ class OnboardingScreen extends StatelessWidget {
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const LoginScreen(),
+                                      builder: (context) => const AuthWrapper(),
                                     ),
                                   );
                                 },

@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
-import '../auth/login_screen.dart';
+import '../auth_wrapper.dart';
 import '../../utils/app_colors.dart';
+import '../../services/auth_manager.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoggingOut = false;
 
   @override
   Widget build(BuildContext context) {
@@ -74,21 +82,31 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Habib Fabian',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkGray,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'habib.fabian@email.com',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.mediumGray,
-                    ),
+                  ListenableBuilder(
+                    listenable: AuthManager.instance,
+                    builder: (context, child) {
+                      final user = AuthManager.instance.currentUser;
+                      return Column(
+                        children: [
+                          Text(
+                            user?.name ?? 'Loading...',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.darkGray,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            user?.email ?? '',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.mediumGray,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -227,21 +245,46 @@ class ProfileScreen extends StatelessWidget {
                           child: const Text('Batal'),
                         ),
                         ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => const LoginScreen(),
-                              ),
-                              (route) => false,
-                            );
+                          onPressed: _isLoggingOut ? null : () async {
+                            setState(() {
+                              _isLoggingOut = true;
+                            });
+                            
+                            try {
+                              await AuthManager.instance.logout();
+                              
+                              if (mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) => const AuthWrapper(),
+                                  ),
+                                  (route) => false,
+                                );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isLoggingOut = false;
+                                });
+                              }
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.error,
                           ),
-                          child: const Text(
-                            'Keluar',
-                            style: TextStyle(color: Colors.white),
-                          ),
+                          child: _isLoggingOut
+                              ? const SizedBox(
+                                  height: 16,
+                                  width: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  'Keluar',
+                                  style: TextStyle(color: Colors.white),
+                                ),
                         ),
                       ],
                     ),
