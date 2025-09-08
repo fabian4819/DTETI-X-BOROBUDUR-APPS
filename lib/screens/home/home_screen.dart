@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../borobudurpedia/borobudurpedia_main_screen.dart';
 import '../../utils/app_colors.dart';
+import '../../services/auth_manager.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -40,9 +41,9 @@ class HomeScreen extends StatelessWidget {
                                   color: Colors.white.withOpacity(0.9),
                                 ),
                               ),
-                              const Text(
-                                'Habib Fabian!',
-                                style: TextStyle(
+                              Text(
+                                '${AuthManager.instance.currentUser?.name ?? 'User'}!',
+                                style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
