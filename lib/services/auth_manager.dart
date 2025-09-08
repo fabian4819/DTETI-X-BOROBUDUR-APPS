@@ -167,4 +167,5 @@ class AuthManager extends ChangeNotifier {
     _isLoading = loading;
     notifyListeners();
   }
+
 }

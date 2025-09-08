@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import '../../models/category.dart';
+import 'article_details_screen.dart';
 
 class BorobudurpediaCategoriesScreen extends StatelessWidget {
   const BorobudurpediaCategoriesScreen({super.key});
@@ -70,7 +71,7 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
               itemCount: categories.length,
               itemBuilder: (context, index) {
                 final category = categories[index];
-                return _buildCategoryCard(category);
+                return _buildCategoryCard(context, category);
               },
             ),
           ],
@@ -79,19 +80,32 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryCard(Category category) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+  Widget _buildCategoryCard(BuildContext context, Category category) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to article details with sample article
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ArticleDetailsScreen(
+              title: _getSampleArticleTitle(category.name),
+              category: category.name,
+            ),
           ),
-        ],
-      ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
       child: Column(
         children: [
           // Ganti Expanded menjadi SizedBox
@@ -158,6 +172,37 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
+  }
+
+  String _getSampleArticleTitle(String categoryName) {
+    switch (categoryName.toLowerCase()) {
+      case 'alat':
+        return 'Alat-alat Tradisional Pembangun Borobudur';
+      case 'arsitektur':
+        return 'Keajaiban Arsitektur Candi Borobudur';
+      case 'bahan':
+        return 'Batu Andesit: Material Utama Borobudur';
+      case 'budha':
+      case 'buddha':
+        return 'Relief Buddha dalam Candi Borobudur';
+      case 'fauna':
+        return 'Fauna dalam Relief Candi Borobudur';
+      case 'flora':
+        return 'Motif Flora pada Ornamen Borobudur';
+      case 'kawasan':
+        return 'Kawasan Cagar Budaya Borobudur';
+      case 'pelestarian':
+        return 'Upaya Pelestarian Candi Borobudur';
+      case 'regulasi':
+        return 'Regulasi Perlindungan Warisan Budaya';
+      case 'stakeholder':
+        return 'Stakeholder Pelestarian Borobudur';
+      case 'tokoh':
+        return 'Tokoh-tokoh Penting dalam Sejarah Borobudur';
+      default:
+        return 'Keajaiban Warisan Dunia Borobudur';
+    }
   }
 }

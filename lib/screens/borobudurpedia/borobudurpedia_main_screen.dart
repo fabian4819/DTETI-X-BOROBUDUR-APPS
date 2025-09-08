@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'borobudurpedia_categories_screen.dart';
+import 'article_details_screen.dart';
 import '../../utils/app_colors.dart';
 
 class BorobudurpediaMainScreen extends StatelessWidget {
@@ -147,15 +148,15 @@ Widget build(BuildContext context) {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildCategoryCard('Alat', '155 Ensiklopedia'),
+                        child: _buildCategoryCard(context, 'Alat', '155 Ensiklopedia'),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildCategoryCard('Bahan', '87 Ensiklopedia'),
+                        child: _buildCategoryCard(context, 'Bahan', '87 Ensiklopedia'),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildCategoryCard('Buddha', '87 Ensiklopedia'),
+                        child: _buildCategoryCard(context, 'Buddha', '87 Ensiklopedia'),
                       ),
                     ],
                   ),
@@ -187,11 +188,13 @@ Widget build(BuildContext context) {
                   ),
                   const SizedBox(height: 16),
                   _buildPopularLinkItem(
+                    context,
                     'Ensiklopedia',
                     'Kumpulan kata yang berkaitan dengan Candi Borobudur, Candi Mendut dan Candi Pawon',
                   ),
                   const SizedBox(height: 12),
                   _buildPopularLinkItem(
+                    context,
                     'Sikawa',
                     'Aplikasi pemetaan kawasan Candi Borobudur secara daring',
                   ),
@@ -228,21 +231,33 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _buildCategoryCard(String title, String subtitle) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: AppColors.lightGray),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+  Widget _buildCategoryCard(BuildContext context, String title, String subtitle) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ArticleDetailsScreen(
+              title: _getSampleArticleTitle(title),
+              category: title,
+            ),
           ),
-        ],
-      ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: AppColors.lightGray),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
       child: Column(
         children: [
           Container(
@@ -273,17 +288,30 @@ Widget build(BuildContext context) {
           ),
         ],
       ),
+      ),
     );
   }
 
-  Widget _buildPopularLinkItem(String title, String description) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.lightGray),
-      ),
+  Widget _buildPopularLinkItem(BuildContext context, String title, String description) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ArticleDetailsScreen(
+              title: _getSampleArticleTitle(title),
+              category: 'Lain-lain',
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.lightGray),
+        ),
       child: Row(
         children: [
           Container(
@@ -321,6 +349,27 @@ Widget build(BuildContext context) {
           ),
         ],
       ),
+      ),
     );
+  }
+
+  String _getSampleArticleTitle(String categoryName) {
+    switch (categoryName.toLowerCase()) {
+      case 'alat':
+        return 'Alat-alat Tradisional Pembangun Borobudur';
+      case 'arsitektur':
+        return 'Keajaiban Arsitektur Candi Borobudur';
+      case 'bahan':
+        return 'Batu Andesit: Material Utama Borobudur';
+      case 'budha':
+      case 'buddha':
+        return 'Relief Buddha dalam Candi Borobudur';
+      case 'ensiklopedia':
+        return 'Ensiklopedia Lengkap Candi Borobudur';
+      case 'sikawa':
+        return 'Sistem Informasi Kawasan Borobudur';
+      default:
+        return 'Keajaiban Warisan Dunia Borobudur';
+    }
   }
 }

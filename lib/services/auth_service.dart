@@ -129,22 +129,41 @@ class AuthService {
 
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // API returns nested structure: data.data contains the actual user data
+        final userData = data['data']?['data'];
+        
         // Save tokens to shared preferences
         final prefs = await SharedPreferences.getInstance();
-        if (data['access_token'] != null) {
-          await prefs.setString('access_token', data['access_token']);
+        if (userData?['access_token'] != null) {
+          await prefs.setString('access_token', userData['access_token']);
         }
-        if (data['refresh_token'] != null) {
-          await prefs.setString('refresh_token', data['refresh_token']);
+        if (userData?['refresh_token'] != null) {
+          await prefs.setString('refresh_token', userData['refresh_token']);
         }
-        if (data['user'] != null) {
-          await prefs.setString('user_data', jsonEncode(data['user']));
+        if (userData != null) {
+          // Create user object without tokens for storage
+          final userDataForStorage = {
+            'id': userData['id'],
+            'name': userData['name'],
+            'email': userData['email'],
+            'role': userData['role'] ?? 'user',
+          };
+          await prefs.setString('user_data', jsonEncode(userDataForStorage));
         }
 
         return AuthResult.success(
           message: data['message'] ?? 'Login successful',
-          data: data,
+          data: {
+            'user': userData != null ? {
+              'id': userData['id'],
+              'name': userData['name'], 
+              'email': userData['email'],
+              'role': userData['role'] ?? 'user',
+            } : null,
+            'access_token': userData?['access_token'],
+            'refresh_token': userData?['refresh_token'],
+          },
         );
       } else {
         return AuthResult.error(

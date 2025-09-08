@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
-import '../home/home_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -272,6 +271,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 24),
 
+
               const Center(
                 child: Text(
                   'Atau masuk dengan',
@@ -366,13 +366,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result.success) {
         if (!mounted) return;
         
-        // Navigate to home screen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const HomeScreen(),
-          ),
-        );
+        // Don't navigate manually - let AuthWrapper handle it
+        // AuthManager has already updated the state, so AuthWrapper
+        // will automatically navigate to MainNavigation
       } else {
         if (!mounted) return;
         
