@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home/home_screen.dart';
 import 'navigation/api_map_navigation_screen.dart';
-import 'news/news_screen.dart';
+import 'borobudurpedia/borobudurpedia_categories_screen.dart';
 import 'agenda/agenda_screen.dart';
 import 'profile/profile_screen.dart';
 import '../utils/app_colors.dart';
@@ -19,7 +19,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const ApiMapNavigationScreen(),
-    const NewsScreen(),
+    const BorobudurpediaCategoriesScreen(),
     const AgendaScreen(),
     const ProfileScreen(),
   ];
@@ -72,7 +72,7 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(
               icon: Icon(Icons.article_outlined),
               activeIcon: Icon(Icons.article),
-              label: 'Berita',
+              label: 'Artikel',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.event_outlined),

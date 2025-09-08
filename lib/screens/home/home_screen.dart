@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../borobudurpedia/borobudurpedia_main_screen.dart';
-import '../navigation/navigation_selection_screen.dart';
-import '../news/news_screen.dart';
+import '../navigation/api_map_navigation_screen.dart';
+import '../borobudurpedia/borobudurpedia_categories_screen.dart';
 import '../agenda/agenda_screen.dart';
 import '../facilities/facilities_screen.dart';
 import '../profile/profile_screen.dart';
@@ -122,23 +122,7 @@ class HomeScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const NavigationSelectionScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickAccessItem(
-                            icon: Icons.menu_book,
-                            label: 'Ensiklopedia',
-                            color: AppColors.secondary,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const BorobudurpediaMainScreen(),
+                                  builder: (context) => const ApiMapNavigationScreen(),
                                 ),
                               );
                             },
@@ -148,13 +132,29 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: _buildQuickAccessItem(
                             icon: Icons.article,
-                            label: 'Berita',
+                            label: 'Artikel',
+                            color: AppColors.secondary,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const BorobudurpediaCategoriesScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAccessItem(
+                            icon: Icons.menu_book,
+                            label: 'Borobudurpedia',
                             color: AppColors.accent,
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const NewsScreen(),
+                                  builder: (context) => const BorobudurpediaMainScreen(),
                                 ),
                               );
                             },
