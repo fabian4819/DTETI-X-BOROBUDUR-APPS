@@ -461,21 +461,35 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   }
   
   void _onNodeMarkerTapped(TempleNode node) {
+    if (!mounted) return;
+    
     setState(() {
       selectedNode = node;
       selectedFeature = null;
     });
     
-    _showNodeBottomSheet(node);
+    // Add a small delay to ensure state is updated
+    Future.microtask(() {
+      if (mounted) {
+        _showNodeBottomSheet(node);
+      }
+    });
   }
   
   void _onFeatureMarkerTapped(TempleFeature feature) {
+    if (!mounted) return;
+    
     setState(() {
       selectedFeature = feature;
       selectedNode = null;
     });
     
-    _showFeatureBottomSheet(feature);
+    // Add a small delay to ensure state is updated
+    Future.microtask(() {
+      if (mounted) {
+        _showFeatureBottomSheet(feature);
+      }
+    });
   }
   
   Color _getNodeMarkerColor(TempleNode node, bool isSelected, bool isDestination, bool isStart) {
@@ -1241,128 +1255,150 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   }
   
   void _showNodeBottomSheet(TempleNode node) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              node.name,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text('Type: ${node.type}'),
-            Text('Level: ${node.level}'),
-            if (node.description != null) Text('Description: ${node.description}'),
-            const SizedBox(height: 16),
-            Row(
+    try {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (BuildContext context) => SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (!useCurrentLocation)
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          startNode = node;
-                          startFeature = null;
-                        });
-                        Navigator.of(context).pop();
-                        _setupMarkers();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                Text(
+                  node.name,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text('Type: ${node.type}'),
+                Text('Level: ${node.level}'),
+                if (node.description != null) Text('Description: ${node.description}'),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    if (!useCurrentLocation)
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            setState(() {
+                              startNode = node;
+                              startFeature = null;
+                            });
+                            _setupMarkers();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                          ),
+                          child: const Text('Set sebagai Start', style: TextStyle(color: Colors.white)),
+                        ),
                       ),
-                      child: const Text('Set sebagai Start'),
+                    if (!useCurrentLocation) const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          setState(() {
+                            destinationNode = node;
+                            destinationFeature = null;
+                          });
+                          _setupMarkers();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        child: const Text('Set sebagai Tujuan', style: TextStyle(color: Colors.white)),
+                      ),
                     ),
-                  ),
-                if (!useCurrentLocation) const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        destinationNode = node;
-                        destinationFeature = null;
-                      });
-                      Navigator.of(context).pop();
-                      _setupMarkers();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
-                    child: const Text('Set sebagai Tujuan'),
-                  ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing node bottom sheet: $e');
+    }
   }
   
   void _showFeatureBottomSheet(TempleFeature feature) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              feature.name,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text('Type: ${feature.type}'),
-            Text('Level: ${feature.level}'),
-            if (feature.description != null) Text('Description: ${feature.description}'),
-            if (feature.distanceM != null) Text('Distance: ${feature.distanceM!.toStringAsFixed(0)}m'),
-            const SizedBox(height: 16),
-            Row(
+    try {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (BuildContext context) => SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (!useCurrentLocation)
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          startFeature = feature;
-                          startNode = null;
-                        });
-                        Navigator.of(context).pop();
-                        _setupMarkers();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                Text(
+                  feature.name,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text('Type: ${feature.type}'),
+                Text('Level: ${feature.level}'),
+                if (feature.description != null) Text('Description: ${feature.description}'),
+                if (feature.distanceM != null) Text('Distance: ${feature.distanceM!.toStringAsFixed(0)}m'),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    if (!useCurrentLocation)
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            setState(() {
+                              startFeature = feature;
+                              startNode = null;
+                            });
+                            _setupMarkers();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                          ),
+                          child: const Text('Set sebagai Start', style: TextStyle(color: Colors.white)),
+                        ),
                       ),
-                      child: const Text('Set sebagai Start'),
+                    if (!useCurrentLocation) const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          setState(() {
+                            destinationFeature = feature;
+                            destinationNode = null;
+                          });
+                          _setupMarkers();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        child: const Text('Set sebagai Tujuan', style: TextStyle(color: Colors.white)),
+                      ),
                     ),
-                  ),
-                if (!useCurrentLocation) const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        destinationFeature = feature;
-                        destinationNode = null;
-                      });
-                      Navigator.of(context).pop();
-                      _setupMarkers();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
-                    child: const Text('Set sebagai Tujuan'),
-                  ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing feature bottom sheet: $e');
+    }
   }
 
   @override
