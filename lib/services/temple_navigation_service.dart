@@ -572,6 +572,25 @@ class TempleNavigationService {
     return total;
   }
 
+  /// Check if location permission is granted without requesting it
+  Future<bool> hasLocationPermission() async {
+    try {
+      // Check if location service is enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return false;
+      }
+
+      // Check current permission status using permission_handler
+      PermissionStatus permission = await Permission.location.status;
+      return permission.isGranted;
+      
+    } catch (e) {
+      debugPrint('Error checking location permission: $e');
+      return false;
+    }
+  }
+
   Future<bool> requestLocationPermission() async {
     try {
       // Check if location service is enabled
@@ -623,8 +642,12 @@ class TempleNavigationService {
   }
 
   Future<void> startLocationTracking() async {
-    if (!await requestLocationPermission()) {
-      throw Exception('Location permission not granted');
+    // Check if permission is already granted first
+    if (!await hasLocationPermission()) {
+      // Only request if not already granted
+      if (!await requestLocationPermission()) {
+        throw Exception('Location permission not granted');
+      }
     }
 
     const LocationSettings locationSettings = LocationSettings(

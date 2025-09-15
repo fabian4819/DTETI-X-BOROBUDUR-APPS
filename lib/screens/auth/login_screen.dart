@@ -21,6 +21,16 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Reinitialize auth manager when returning to login screen
+    // This ensures any cached authentication state is cleared
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AuthManager.instance.reinitialize();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,

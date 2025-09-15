@@ -245,7 +245,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: const Text('Batal'),
                         ),
                         ElevatedButton(
-                          onPressed: _isLoggingOut ? null : () async {
+                          onPressed: () async {
+                            // Close dialog immediately
+                            Navigator.pop(context);
+                            
+                            // Show loading state in parent widget
                             setState(() {
                               _isLoggingOut = true;
                             });
@@ -254,6 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               await AuthManager.instance.logout();
                               
                               if (mounted) {
+                                // Navigate to AuthWrapper
                                 Navigator.of(context).pushAndRemoveUntil(
                                   MaterialPageRoute(
                                     builder: (context) => const AuthWrapper(),
@@ -272,19 +277,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.error,
                           ),
-                          child: _isLoggingOut
-                              ? const SizedBox(
-                                  height: 16,
-                                  width: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : const Text(
-                                  'Keluar',
-                                  style: TextStyle(color: Colors.white),
-                                ),
+                          child: const Text(
+                            'Keluar',
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ),
                       ],
                     ),

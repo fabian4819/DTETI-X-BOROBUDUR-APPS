@@ -168,4 +168,9 @@ class AuthManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Reinitialize authentication state - useful after verification
+  Future<void> reinitialize() async {
+    await initialize();
+  }
+
 }

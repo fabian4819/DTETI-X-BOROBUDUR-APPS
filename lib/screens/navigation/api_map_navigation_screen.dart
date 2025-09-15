@@ -64,6 +64,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   // UI states
   bool _showLoadingOverlay = false;
   NavigationUpdate? _currentNavigationUpdate;
+  bool? _hasLocationPermission; // Cache permission status
 
   @override
   void initState() {
@@ -97,9 +98,13 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   }
   
   Future<void> _checkLocationPermissionStatus() async {
-    final hasPermission = await _navigationService.requestLocationPermission();
+    // Only check permission status, don't request again
+    final hasPermission = await _navigationService.hasLocationPermission();
+    // Update cache
+    _hasLocationPermission = hasPermission;
+    
     if (hasPermission && useCurrentLocation && mounted) {
-      // Re-initialize location tracking if permission was just granted
+      // Re-initialize location tracking if permission is available
       _initializeLocationTracking();
     }
   }
@@ -139,6 +144,18 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
 
   Future<void> _initializeLocationTracking() async {
     try {
+      // Use cached permission status if available
+      if (_hasLocationPermission == null) {
+        _hasLocationPermission = await _navigationService.hasLocationPermission();
+      }
+      
+      if (!_hasLocationPermission!) {
+        // Only show dialog if permission is not granted
+        debugPrint('Location permission not granted, showing dialog');
+        _showLocationPermissionDialog();
+        return;
+      }
+      
       // Get initial position
       _currentPosition = _navigationService.getCurrentLocationForTesting();
       
@@ -167,7 +184,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
       });
     } catch (e) {
       debugPrint('Failed to initialize location tracking: $e');
-      _showLocationPermissionDialog();
+      // Don't show dialog here - only show if permission is specifically denied
     }
   }
   
@@ -193,6 +210,15 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
     
     // Add temple node markers from API
     for (final node in _navigationService.nodes.values) {
+      final nodeName = node.name.toLowerCase();
+      
+      // Skip lantai nodes UNLESS they also contain tangga or stupa
+      if (nodeName.contains('lantai') && 
+          !nodeName.contains('tangga') && 
+          !nodeName.contains('stupa')) {
+        continue;
+      }
+      
       final isSelected = selectedNode?.id == node.id;
       final isDestination = destinationNode?.id == node.id;
       final isStart = startNode?.id == node.id;
@@ -1145,9 +1171,20 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              // Try to request permission again
+              
+              // Check if permission is already granted first
+              final alreadyGranted = await _navigationService.hasLocationPermission();
+              if (alreadyGranted) {
+                _showMessage('Izin lokasi sudah diberikan!', Colors.green);
+                _initializeLocationTracking();
+                return;
+              }
+              
+              // Try to request permission
               final hasPermission = await _navigationService.requestLocationPermission();
               if (hasPermission) {
+                // Update cache
+                _hasLocationPermission = true;
                 _showMessage('Izin lokasi diberikan!', Colors.green);
                 _initializeLocationTracking();
               } else {

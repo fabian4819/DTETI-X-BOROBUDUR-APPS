@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
+import '../auth_wrapper.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
 
@@ -184,7 +184,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const LoginScreen(),
+                          builder: (context) => const AuthWrapper(),
                         ),
                         (route) => false,
                       );
@@ -224,7 +224,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       if (result.success) {
         if (!mounted) return;
         
-        // Show success message and navigate to login
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Email berhasil diverifikasi! Silakan login.'),
@@ -233,14 +233,18 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           ),
         );
 
-        // Wait a moment then navigate to login screen
+        // Reinitialize auth manager to clear any cached state
+        await AuthManager.instance.reinitialize();
+
+        // Wait a moment then navigate to auth wrapper
         await Future.delayed(const Duration(seconds: 1));
         
         if (mounted) {
+          // Navigate back to auth wrapper to properly handle authentication state
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-              builder: (context) => const LoginScreen(),
+              builder: (context) => const AuthWrapper(),
             ),
             (route) => false,
           );

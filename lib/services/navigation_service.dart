@@ -204,6 +204,18 @@ class NavigationService {
     return earthRadius * c;
   }
 
+  /// Check if location permission is granted without requesting it
+  Future<bool> hasLocationPermission() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return false;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always || 
+           permission == LocationPermission.whileInUse;
+  }
+
   Future<bool> requestLocationPermission() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -229,8 +241,12 @@ class NavigationService {
   }
 
   Future<void> startLocationTracking() async {
-    if (!await requestLocationPermission()) {
-      throw Exception('Location permission not granted');
+    // Check if permission is already granted first
+    if (!await hasLocationPermission()) {
+      // Only request if not already granted
+      if (!await requestLocationPermission()) {
+        throw Exception('Location permission not granted');
+      }
     }
 
     const LocationSettings locationSettings = LocationSettings(
