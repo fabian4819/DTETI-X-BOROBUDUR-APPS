@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../auth_wrapper.dart';
+import '../main_navigation.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/notification_helper.dart';
 import '../../services/auth_manager.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
@@ -224,70 +226,44 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       if (result.success) {
         if (!mounted) return;
         
-        // Show success message with proper green color
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Email berhasil diverifikasi! Selamat datang!'),
-            backgroundColor: AppColors.success,
-            duration: Duration(seconds: 3),
-          ),
+        // Show success notification
+        NotificationHelper.showCustomNotification(
+          context: context,
+          message: result.message,
+          color: Colors.black,
+          isSuccess: result.success,
         );
 
-        // Check if user data is returned and auto-login
-        if (result.data != null && result.data!['user'] != null) {
-          // Auto-login the user after successful verification
-          await AuthManager.instance.initialize();
-          
-          // Navigate directly to main app
-          await Future.delayed(const Duration(seconds: 1));
-          
-          if (mounted) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AuthWrapper(),
-              ),
-              (route) => false,
-            );
-          }
-        } else {
-          // Reinitialize auth manager to clear any cached state
-          await AuthManager.instance.reinitialize();
+        // Wait briefly for the user to see the success message
+        await Future.delayed(const Duration(milliseconds: 1500));
 
-          // Wait a moment then navigate to auth wrapper
-          await Future.delayed(const Duration(seconds: 2));
-          
-          if (mounted) {
-            // Navigate back to auth wrapper to properly handle authentication state
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AuthWrapper(),
-              ),
-              (route) => false,
-            );
-          }
+        if (mounted) {
+          // Navigate directly to main navigation (home page)
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MainNavigation(),
+            ),
+            (route) => false,
+          );
         }
       } else {
         if (!mounted) return;
         
-        // Show error message with proper red color
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.message),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 3),
-          ),
+        // Show error notification
+        NotificationHelper.showCustomNotification(
+          context: context,
+          message: result.message,
+          color: Colors.black,
+          isSuccess: result.success,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
-          backgroundColor: AppColors.error,
-        ),
+
+      NotificationHelper.showError(
+        context,
+        'Terjadi kesalahan jaringan',
       );
     } finally {
       if (mounted) {
@@ -310,29 +286,18 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
       if (!mounted) return;
 
-      if (result.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Kode verifikasi telah dikirim ulang!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.message),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      NotificationHelper.showCustomNotification(
+        context: context,
+        message: result.message,
+        color: Colors.black,
+        isSuccess: result.success,
+      );
     } catch (e) {
       if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
-          backgroundColor: AppColors.error,
-        ),
+
+      NotificationHelper.showError(
+        context,
+        'Terjadi kesalahan jaringan',
       );
     } finally {
       if (mounted) {
