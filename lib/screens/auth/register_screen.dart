@@ -344,7 +344,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: const Center(
                           child: FaIcon(
                             FontAwesomeIcons.google,
-                            color: Colors.red,
+                            color: AppColors.error,
                             size: 20,
                           ),
                         ),
@@ -423,7 +423,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result.message),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -433,7 +433,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Terjadi kesalahan: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     } finally {

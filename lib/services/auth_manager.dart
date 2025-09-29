@@ -92,6 +92,13 @@ class AuthManager extends ChangeNotifier {
         code: code,
       );
 
+      // If verification successful and contains user data, auto-login
+      if (result.success && result.data != null && result.data!['user'] != null) {
+        _isLoggedIn = true;
+        _currentUser = User.fromJson(result.data!['user']);
+        notifyListeners();
+      }
+
       return result;
     } finally {
       _setLoading(false);

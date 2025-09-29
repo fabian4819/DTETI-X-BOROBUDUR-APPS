@@ -233,7 +233,7 @@ class HomeScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Populer Dikunjungi',
+                          'Fasilitas Borobudur',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -241,7 +241,14 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const FacilitiesScreen(),
+                              ),
+                            );
+                          },
                           child: const Text(
                             'Lihat semua',
                             style: TextStyle(color: AppColors.primary),
@@ -254,11 +261,12 @@ class HomeScreen extends StatelessWidget {
                       height: 200,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: 3,
+                        itemCount: _getFacilities().length,
                         itemBuilder: (context, index) {
+                          final facility = _getFacilities()[index];
                           return Container(
                             width: 300,
-                            margin: EdgeInsets.only(right: index < 2 ? 16 : 0),
+                            margin: EdgeInsets.only(right: index < _getFacilities().length - 1 ? 16 : 0),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
@@ -274,12 +282,12 @@ class HomeScreen extends StatelessWidget {
                               child: Stack(
                                 children: [
                                   Container(
-                                    decoration: const BoxDecoration(
-                                      gradient: AppColors.sunsetGradient,
+                                    decoration: BoxDecoration(
+                                      gradient: facility['gradient'] as LinearGradient,
                                     ),
-                                    child: const Center(
+                                    child: Center(
                                       child: Icon(
-                                        Icons.temple_buddhist,
+                                        facility['icon'] as IconData,
                                         size: 80,
                                         color: Colors.white,
                                       ),
@@ -305,18 +313,18 @@ class HomeScreen extends StatelessWidget {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        const Text(
-                                          'Stupa Induk',
-                                          style: TextStyle(
+                                        Text(
+                                          facility['name'] as String,
+                                          style: const TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
-                                        const Text(
-                                          '450m darimu',
-                                          style: TextStyle(
+                                        Text(
+                                          facility['description'] as String,
+                                          style: const TextStyle(
                                             fontSize: 14,
                                             color: Colors.white,
                                           ),
@@ -325,7 +333,14 @@ class HomeScreen extends StatelessWidget {
                                         SizedBox(
                                           width: double.infinity,
                                           child: ElevatedButton(
-                                            onPressed: () {},
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => const FacilitiesScreen(),
+                                                ),
+                                              );
+                                            },
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Colors.white,
                                               foregroundColor:
@@ -340,7 +355,7 @@ class HomeScreen extends StatelessWidget {
                                               ),
                                             ),
                                             child: const Text(
-                                              'Kunjungi',
+                                              'Lihat Detail',
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w600,
                                               ),
@@ -464,6 +479,43 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<Map<String, dynamic>> _getFacilities() {
+    return [
+      {
+        'name': 'Museum Borobudur',
+        'description': 'Koleksi artefak & sejarah',
+        'icon': Icons.museum,
+        'gradient': const LinearGradient(
+          colors: [Color(0xFF6B73FF), Color(0xFF000DFF)],
+        ),
+      },
+      {
+        'name': 'Parkir Kendaraan',
+        'description': 'Area parkir yang luas',
+        'icon': Icons.local_parking,
+        'gradient': const LinearGradient(
+          colors: [Color(0xFF00C9FF), Color(0xFF92FE9D)],
+        ),
+      },
+      {
+        'name': 'Pusat Informasi',
+        'description': 'Bantuan & panduan wisata',
+        'icon': Icons.info,
+        'gradient': const LinearGradient(
+          colors: [Color(0xFFFC466B), Color(0xFF3F5EFB)],
+        ),
+      },
+      {
+        'name': 'Area Makan',
+        'description': 'Resto & makanan tradisional',
+        'icon': Icons.restaurant,
+        'gradient': const LinearGradient(
+          colors: [Color(0xFFFFCE00), Color(0xFFFE4B36)],
+        ),
+      },
+    ];
   }
 
   Widget _buildQuickAccessItem({

@@ -224,39 +224,59 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       if (result.success) {
         if (!mounted) return;
         
-        // Show success message
+        // Show success message with proper green color
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Email berhasil diverifikasi! Silakan login.'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            content: Text('Email berhasil diverifikasi! Selamat datang!'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 3),
           ),
         );
 
-        // Reinitialize auth manager to clear any cached state
-        await AuthManager.instance.reinitialize();
+        // Check if user data is returned and auto-login
+        if (result.data != null && result.data!['user'] != null) {
+          // Auto-login the user after successful verification
+          await AuthManager.instance.initialize();
+          
+          // Navigate directly to main app
+          await Future.delayed(const Duration(seconds: 1));
+          
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AuthWrapper(),
+              ),
+              (route) => false,
+            );
+          }
+        } else {
+          // Reinitialize auth manager to clear any cached state
+          await AuthManager.instance.reinitialize();
 
-        // Wait a moment then navigate to auth wrapper
-        await Future.delayed(const Duration(seconds: 1));
-        
-        if (mounted) {
-          // Navigate back to auth wrapper to properly handle authentication state
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AuthWrapper(),
-            ),
-            (route) => false,
-          );
+          // Wait a moment then navigate to auth wrapper
+          await Future.delayed(const Duration(seconds: 2));
+          
+          if (mounted) {
+            // Navigate back to auth wrapper to properly handle authentication state
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AuthWrapper(),
+              ),
+              (route) => false,
+            );
+          }
         }
       } else {
         if (!mounted) return;
         
-        // Show error message
+        // Show error message with proper red color
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result.message),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -266,7 +286,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Terjadi kesalahan: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     } finally {
@@ -294,14 +314,14 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Kode verifikasi telah dikirim ulang!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result.message),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -311,7 +331,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Terjadi kesalahan: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     } finally {

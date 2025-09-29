@@ -559,8 +559,16 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   }
   
   void _onMapTapped(TapPosition tapPosition, LatLng point) {
-    // Hide any open bottom sheets
-    Navigator.of(context).pop();
+    // Hide any open bottom sheets - only if there are routes to pop
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+    
+    // Clear any selected markers
+    setState(() {
+      selectedNode = null;
+      selectedFeature = null;
+    });
   }
   
   Future<void> _startNavigation() async {

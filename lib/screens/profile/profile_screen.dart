@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../auth_wrapper.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
+import 'visit_history_screen.dart';
+import 'favorites_screen.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -22,7 +25,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
+            },
             icon: const Icon(Icons.settings),
           ),
         ],
@@ -152,28 +162,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.history,
                     title: 'Riwayat Kunjungan',
                     subtitle: 'Lihat tempat yang pernah dikunjungi',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const VisitHistoryScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.favorite,
                     title: 'Tempat Favorit',
                     subtitle: 'Daftar tempat yang disimpan',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FavoritesScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.rate_review,
                     title: 'Review & Rating',
                     subtitle: 'Ulasan yang pernah diberikan',
-                    onTap: () {},
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Fitur review akan segera hadir!'),
+                          backgroundColor: Colors.blue,
+                        ),
+                      );
+                    },
                   ),
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.download,
                     title: 'Unduhan',
                     subtitle: 'File dan konten yang diunduh',
-                    onTap: () {},
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Belum ada file yang diunduh'),
+                          backgroundColor: AppColors.warning,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -200,28 +238,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.notifications,
                     title: 'Notifikasi',
                     subtitle: 'Atur preferensi notifikasi',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.language,
                     title: 'Bahasa',
                     subtitle: 'Indonesia',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.privacy_tip,
                     title: 'Privasi & Keamanan',
                     subtitle: 'Kelola data dan keamanan akun',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.help,
                     title: 'Bantuan & Dukungan',
                     subtitle: 'FAQ dan hubungi support',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

@@ -84,15 +84,7 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         // Navigate to article details with sample article
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ArticleDetailsScreen(
-              title: _getSampleArticleTitle(category.name),
-              category: category.name,
-            ),
-          ),
-        );
+        _navigateToArticle(context, category);
       },
       child: Container(
         decoration: BoxDecoration(
@@ -153,7 +145,7 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () => _navigateToArticle(context, category),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -174,6 +166,29 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
       ),
       ),
     );
+  }
+
+  void _navigateToArticle(BuildContext context, Category category) {
+    try {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ArticleDetailsScreen(
+            title: _getSampleArticleTitle(category.name),
+            category: category.name,
+          ),
+        ),
+      );
+    } catch (e) {
+      // Handle navigation error gracefully
+      debugPrint('Error navigating to article: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal membuka artikel. Silakan coba lagi.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   String _getSampleArticleTitle(String categoryName) {

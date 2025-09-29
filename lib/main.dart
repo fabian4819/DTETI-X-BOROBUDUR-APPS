@@ -13,7 +13,7 @@ class BorobudurApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Borobudur Explorer',
+      title: 'Wonderful Borobudur',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
