@@ -145,9 +145,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   Future<void> _initializeLocationTracking() async {
     try {
       // Use cached permission status if available
-      if (_hasLocationPermission == null) {
-        _hasLocationPermission = await _navigationService.hasLocationPermission();
-      }
+      _hasLocationPermission ??= await _navigationService.hasLocationPermission();
       
       if (!_hasLocationPermission!) {
         // Only show dialog if permission is not granted
