@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/app_colors.dart';
 
 class AuthService {
   static const String baseUrl = 'https://borobudurbackend.context.my.id/v1/auth';
@@ -37,17 +39,17 @@ class AuthService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return AuthResult.success(
-          message: data['message'] ?? 'Registration successful',
+          message: data['message'] ?? 'Registrasi berhasil',
           data: data,
         );
       } else {
         return AuthResult.error(
-          message: data['message'] ?? 'Registration failed',
+          message: data['message'] ?? 'Registrasi gagal',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
-      return AuthResult.error(message: 'Network error: $e');
+      return AuthResult.error(message: 'Terjadi kesalahan jaringan: $e');
     }
   }
 
@@ -68,18 +70,50 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        // Handle successful verification similar to login
+        final userData = data['data']?['data'];
+
+        if (userData != null) {
+          // Save tokens and user data for auto-login
+          final prefs = await SharedPreferences.getInstance();
+          if (userData['access_token'] != null) {
+            await prefs.setString('access_token', userData['access_token']);
+          }
+          if (userData['refresh_token'] != null) {
+            await prefs.setString('refresh_token', userData['refresh_token']);
+          }
+
+          // Save user data
+          final userDataForStorage = {
+            'id': userData['id'],
+            'name': userData['name'],
+            'email': userData['email'],
+            'role': userData['role'] ?? 'user',
+          };
+          await prefs.setString('user_data', jsonEncode(userDataForStorage));
+        }
+
         return AuthResult.success(
-          message: data['message'] ?? 'Email verified successfully',
-          data: data,
+          message: data['message'] ?? 'Email berhasil diverifikasi!',
+          data: {
+            'user': userData != null ? {
+              'id': userData['id'],
+              'name': userData['name'],
+              'email': userData['email'],
+              'role': userData['role'] ?? 'user',
+            } : null,
+            'access_token': userData?['access_token'],
+            'refresh_token': userData?['refresh_token'],
+          },
         );
       } else {
         return AuthResult.error(
-          message: data['message'] ?? 'Email verification failed',
+          message: data['message'] ?? 'Verifikasi email gagal',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
-      return AuthResult.error(message: 'Network error: $e');
+      return AuthResult.error(message: 'Terjadi kesalahan jaringan: $e');
     }
   }
 
@@ -99,17 +133,17 @@ class AuthService {
 
       if (response.statusCode == 200) {
         return AuthResult.success(
-          message: data['message'] ?? 'Verification code sent',
+          message: data['message'] ?? 'Kode verifikasi telah dikirim ulang!',
           data: data,
         );
       } else {
         return AuthResult.error(
-          message: data['message'] ?? 'Failed to resend verification',
+          message: data['message'] ?? 'Gagal mengirim ulang kode verifikasi',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
-      return AuthResult.error(message: 'Network error: $e');
+      return AuthResult.error(message: 'Terjadi kesalahan jaringan: $e');
     }
   }
 
@@ -153,7 +187,7 @@ class AuthService {
         }
 
         return AuthResult.success(
-          message: data['message'] ?? 'Login successful',
+          message: data['message'] ?? 'Login berhasil',
           data: {
             'user': userData != null ? {
               'id': userData['id'],
@@ -167,12 +201,12 @@ class AuthService {
         );
       } else {
         return AuthResult.error(
-          message: data['message'] ?? 'Login failed',
+          message: data['message'] ?? 'Login gagal',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
-      return AuthResult.error(message: 'Network error: $e');
+      return AuthResult.error(message: 'Terjadi kesalahan jaringan: $e');
     }
   }
 
@@ -196,7 +230,7 @@ class AuthService {
       await prefs.remove('refresh_token');
       await prefs.remove('user_data');
 
-      return AuthResult.success(message: 'Logout successful');
+      return AuthResult.info(message: 'Logout berhasil');
     } catch (e) {
       // Even if network fails, clear local data
       final prefs = await SharedPreferences.getInstance();
@@ -204,7 +238,7 @@ class AuthService {
       await prefs.remove('refresh_token');
       await prefs.remove('user_data');
       
-      return AuthResult.success(message: 'Logout successful');
+      return AuthResult.info(message: 'Logout berhasil');
     }
   }
 
@@ -214,7 +248,7 @@ class AuthService {
       final refreshToken = prefs.getString('refresh_token');
 
       if (refreshToken == null) {
-        return AuthResult.error(message: 'No refresh token available');
+        return AuthResult.warning(message: 'Token refresh tidak tersedia');
       }
 
       final response = await http.post(
@@ -236,8 +270,8 @@ class AuthService {
           await prefs.setString('refresh_token', data['refresh_token']);
         }
 
-        return AuthResult.success(
-          message: 'Token refreshed successfully',
+        return AuthResult.info(
+          message: 'Token berhasil diperbarui',
           data: data,
         );
       } else {
@@ -247,12 +281,12 @@ class AuthService {
         await prefs.remove('user_data');
         
         return AuthResult.error(
-          message: data['message'] ?? 'Token refresh failed',
+          message: data['message'] ?? 'Gagal memperbarui token',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
-      return AuthResult.error(message: 'Network error: $e');
+      return AuthResult.error(message: 'Terjadi kesalahan jaringan: $e');
     }
   }
 
@@ -271,18 +305,18 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        return AuthResult.success(
-          message: data['message'] ?? 'Password reset code sent',
+        return AuthResult.info(
+          message: data['message'] ?? 'Kode reset password telah dikirim',
           data: data,
         );
       } else {
         return AuthResult.error(
-          message: data['message'] ?? 'Failed to send reset code',
+          message: data['message'] ?? 'Gagal mengirim kode reset password',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
-      return AuthResult.error(message: 'Network error: $e');
+      return AuthResult.error(message: 'Terjadi kesalahan jaringan: $e');
     }
   }
 
@@ -306,17 +340,17 @@ class AuthService {
 
       if (response.statusCode == 200) {
         return AuthResult.success(
-          message: data['message'] ?? 'Password reset successful',
+          message: data['message'] ?? 'Reset password berhasil',
           data: data,
         );
       } else {
         return AuthResult.error(
-          message: data['message'] ?? 'Password reset failed',
+          message: data['message'] ?? 'Reset password gagal',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
-      return AuthResult.error(message: 'Network error: $e');
+      return AuthResult.error(message: 'Terjadi kesalahan jaringan: $e');
     }
   }
 
@@ -341,14 +375,29 @@ class AuthResult {
   final String message;
   final Map<String, dynamic>? data;
   final int? statusCode;
+  final Color color;
 
   AuthResult.success({
     required this.message,
     this.data,
+    this.color = AppColors.success,
   }) : success = true, statusCode = null;
 
   AuthResult.error({
     required this.message,
     this.statusCode,
+    this.color = AppColors.error,
   }) : success = false, data = null;
+
+  AuthResult.warning({
+    required this.message,
+    this.data,
+    this.color = AppColors.warning,
+  }) : success = true, statusCode = null;
+
+  AuthResult.info({
+    required this.message,
+    this.data,
+    this.color = AppColors.primary,
+  }) : success = true, statusCode = null;
 }

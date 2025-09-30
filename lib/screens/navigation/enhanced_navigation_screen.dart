@@ -719,7 +719,7 @@ class _EnhancedNavigationScreenState extends State<EnhancedNavigationScreen>
           title: const Text('Custom Start Location'),
           subtitle: Text(startLocation?.name ?? 'Use current location'),
           value: useCustomStartLocation,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
           onChanged: (value) {
             setState(() {
               useCustomStartLocation = value;
