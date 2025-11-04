@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 
@@ -9,7 +10,7 @@ class NewsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Berita & Artikel'),
+        title: Text('news.title'.tr()),
         automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
@@ -91,9 +92,9 @@ class NewsScreen extends StatelessWidget {
             
             const SizedBox(height: 30),
             
-            const Text(
-              'Berita Terbaru',
-              style: TextStyle(
+            Text(
+              'news.latest'.tr(),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: AppColors.darkGray,

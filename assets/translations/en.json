@@ -1,0 +1,191 @@
+{
+  "app_name": "Wonderful Borobudur",
+
+  "onboarding": {
+    "title": "Explore Borobudur\nIn Your Hand",
+    "subtitle": "Interactive navigation, complete culture,\nunforgettable experience",
+    "start_button": "Start Adventure"
+  },
+
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "email": "Email",
+    "email_hint": "Enter your email address",
+    "password": "Password",
+    "password_hint": "Enter your password",
+    "confirm_password": "Confirm Password",
+    "confirm_password_hint": "Re-enter your password",
+    "full_name": "Full Name",
+    "full_name_hint": "Enter your full name",
+    "phone": "Phone Number",
+    "phone_hint": "Enter your phone number",
+    "remember_me": "Remember me",
+    "forgot_password": "Forgot password?",
+    "or_login_with": "Or login with",
+    "or_register_with": "Or register with",
+    "dont_have_account": "Don't have an account?",
+    "already_have_account": "Already have an account?",
+    "login_title": "Join Like Others!",
+    "login_subtitle": "Make Every Visit Meaningful",
+    "register_title": "Register Now",
+    "register_subtitle": "Start your Borobudur adventure",
+    "verification_title": "Email Verification",
+    "verification_subtitle": "Enter verification code (6 digits)",
+    "resend_code": "Resend Code",
+    "verify": "Verify",
+    "send_reset_code": "Send Reset Code",
+    "reset_password": "Reset Password",
+    "new_password": "New Password",
+    "error_occurred": "Error occurred: {}",
+
+    "validation": {
+      "email_required": "Email is required",
+      "email_invalid": "Invalid email format",
+      "password_required": "Password is required",
+      "password_min": "Password must be at least 6 characters",
+      "password_mismatch": "Passwords do not match",
+      "name_required": "Name is required",
+      "phone_required": "Phone number is required",
+      "code_required": "Verification code is required"
+    },
+
+    "messages": {
+      "login_success": "Login successful",
+      "register_success": "Registration successful",
+      "logout_success": "Logout successful",
+      "verification_success": "Email verified successfully!",
+      "verification_sent": "Verification code has been resent!",
+      "reset_sent": "Password reset code has been sent",
+      "reset_success": "Password reset successful",
+      "network_error": "Network error occurred",
+      "token_unavailable": "Refresh token unavailable"
+    }
+  },
+
+  "navigation": {
+    "home": "Home",
+    "explore": "Navigate",
+    "news": "News",
+    "agenda": "Events",
+    "profile": "Profile"
+  },
+
+  "home": {
+    "welcome": "Welcome",
+    "subtitle": "Enjoy your travel experience without limits",
+    "quick_access": "Quick Access",
+    "facilities": "Borobudur Facilities",
+    "explore_detail": "Explore every detail of Borobudur Temple with complete guide",
+    "see_all": "See all",
+    "see_detail": "See Details"
+  },
+
+  "navigation_screen": {
+    "title": "Borobudur Temple Navigation",
+    "setup_title": "Setup Navigation",
+    "search_placeholder": "Search location...",
+    "start_navigation": "Start Navigation",
+    "stop_navigation": "Stop Navigation",
+    "navigation_started": "Navigation started",
+    "arrived": "Congratulations! You have arrived at",
+    "starting_to": "Starting navigation to",
+    "turn_left": "turn left",
+    "turn_right": "turn right",
+    "go_straight": "go straight",
+    "very_close": "You are very close to your destination",
+    "destination_ahead": "Destination is {} meters ahead"
+  },
+
+  "profile": {
+    "my_profile": "My Profile",
+    "favorites": "Favorites",
+    "favorite_places": "Favorite Places",
+    "visit_history": "Visit History",
+    "settings": "Settings",
+    "logout_account": "Logout from Account",
+    "logout_confirm": "Are you sure you want to logout?"
+  },
+
+  "settings": {
+    "title": "Settings",
+    "general": "General",
+    "appearance": "Appearance",
+    "privacy": "Privacy & Security",
+    "about": "About",
+    "language": "Language",
+    "select_language": "Select Language",
+    "notifications": "Notifications",
+    "notifications_subtitle": "Receive event and news notifications",
+    "notifications_enabled": "Notifications enabled",
+    "notifications_disabled": "Notifications disabled",
+    "location_services": "Location Services",
+    "location_subtitle": "Allow location access for navigation",
+    "location_enabled": "Location services enabled",
+    "location_disabled": "Location services disabled",
+    "voice_guidance": "Voice Guidance",
+    "voice_subtitle": "Enable voice guidance during navigation",
+    "voice_enabled": "Voice guidance enabled",
+    "voice_disabled": "Voice guidance disabled",
+    "theme": "Theme",
+    "select_theme": "Select Theme",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "theme_system": "System",
+    "theme_changed": "Theme changed to {}",
+    "change_password": "Change Password",
+    "change_password_subtitle": "Update your account password",
+    "two_factor": "Two-Factor Verification",
+    "two_factor_subtitle": "Enhance account security",
+    "delete_data": "Delete Data",
+    "delete_data_subtitle": "Delete all local data",
+    "delete_data_confirm": "Are you sure you want to delete all local data?",
+    "data_deleted": "Data successfully deleted",
+    "about_app": "About Application",
+    "help_faq": "Help & FAQ",
+    "help_subtitle": "Get help using the application",
+    "send_feedback": "Send Feedback",
+    "feedback_subtitle": "Help us improve the app",
+    "version": "Version",
+    "coming_soon": "{} feature coming soon!"
+  },
+
+  "borobudurpedia": {
+    "title": "Borobudurpedia",
+    "search_placeholder": "Search here",
+    "see_all": "See all"
+  },
+
+  "news": {
+    "title": "News & Articles",
+    "latest": "Latest News"
+  },
+
+  "agenda": {
+    "title": "Events & Agenda",
+    "register_event": "Register Event",
+    "cancel": "Cancel"
+  },
+
+  "facilities": {
+    "title": "Facilities",
+    "main_entrance": "Main Entrance",
+    "parking_area": "Parking Area"
+  },
+
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Try Again",
+    "back": "Back"
+  }
+}

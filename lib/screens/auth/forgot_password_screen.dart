@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'reset_password_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
@@ -26,9 +27,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.darkGray),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Lupa Password',
-          style: TextStyle(
+        title: Text(
+          'auth.forgot_password'.tr(),
+          style: const TextStyle(
             color: AppColors.darkGray,
             fontWeight: FontWeight.w600,
           ),
@@ -56,20 +57,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 const SizedBox(height: 32),
                 
                 // Title and description
-                const Text(
-                  'Reset Password',
-                  style: TextStyle(
+                Text(
+                  'auth.reset_password'.tr(),
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: AppColors.darkGray,
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
-                const Text(
+
+                Text(
                   'Masukkan alamat email Anda dan kami akan mengirimkan kode untuk mereset password Anda.',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     color: AppColors.mediumGray,
                     height: 1.5,
@@ -79,9 +80,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 const SizedBox(height: 40),
                 
                 // Email field
-                const Text(
-                  'Email',
-                  style: TextStyle(
+                Text(
+                  'auth.email'.tr(),
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.darkGray,
@@ -93,16 +94,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Email tidak boleh kosong';
+                      return 'auth.validation.email_required'.tr();
                     }
                     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                      return 'Format email tidak valid';
+                      return 'auth.validation.email_invalid'.tr();
                     }
                     return null;
                   },
-                  decoration: const InputDecoration(
-                    hintText: 'Masukkan alamat email anda',
-                    prefixIcon: Icon(
+                  decoration: InputDecoration(
+                    hintText: 'auth.email_hint'.tr(),
+                    prefixIcon: const Icon(
                       Icons.email_outlined,
                       color: AppColors.mediumGray,
                     ),
@@ -125,22 +126,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text(
-                            'Kirim Kode Reset',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        : Text(
+                            'auth.send_reset_code'.tr(),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Back to login
                 Center(
                   child: TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text(
+                    child: Text(
                       'Kembali ke Login',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.mediumGray,
                         decoration: TextDecoration.underline,
                       ),
@@ -174,8 +175,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Kode reset password telah dikirim ke email Anda!'),
+          SnackBar(
+            content: Text('auth.messages.reset_sent'.tr()),
             backgroundColor: AppColors.success,
           ),
         );
@@ -205,7 +206,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
+          content: Text('auth.error_occurred'.tr().replaceAll('{}', e.toString())),
           backgroundColor: AppColors.error,
         ),
       );

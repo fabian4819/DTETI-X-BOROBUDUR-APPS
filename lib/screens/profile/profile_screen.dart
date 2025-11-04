@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../auth_wrapper.dart';
 import '../../utils/app_colors.dart';
@@ -21,7 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Profilku'),
+        title: Text('profile.my_profile'.tr()),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -303,12 +304,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Keluar dari Akun'),
-                      content: const Text('Apakah Anda yakin ingin keluar?'),
+                      title: Text('profile.logout_account'.tr()),
+                      content: Text('profile.logout_confirm'.tr()),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Batal'),
+                          child: Text('common.cancel'.tr()),
                         ),
                         ElevatedButton(
                           onPressed: () async {
@@ -343,9 +344,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.error,
                           ),
-                          child: const Text(
-                            'Keluar',
-                            style: TextStyle(color: Colors.white),
+                          child: Text(
+                            'auth.logout'.tr(),
+                            style: const TextStyle(color: Colors.white),
                           ),
                         ),
                       ],
@@ -359,9 +360,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'Keluar dari Akun',
-                  style: TextStyle(
+                child: Text(
+                  'profile.logout_account'.tr(),
+                  style: const TextStyle(
                     color: AppColors.error,
                     fontWeight: FontWeight.w600,
                   ),

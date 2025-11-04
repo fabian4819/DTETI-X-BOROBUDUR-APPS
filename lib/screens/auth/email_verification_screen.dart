@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../auth_wrapper.dart';
 import '../main_navigation.dart';
 import '../../utils/app_colors.dart';
@@ -34,9 +35,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.darkGray),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Verifikasi Email',
-          style: TextStyle(
+        title: Text(
+          'auth.verification_title'.tr(),
+          style: const TextStyle(
             color: AppColors.darkGray,
             fontWeight: FontWeight.w600,
           ),
@@ -64,17 +65,17 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 const SizedBox(height: 32),
                 
                 // Title and description
-                const Text(
-                  'Verifikasi Email Anda',
-                  style: TextStyle(
+                Text(
+                  'auth.verification_title'.tr(),
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: AppColors.darkGray,
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 Text(
                   'Kami telah mengirimkan kode verifikasi ke:\n${widget.email}',
                   style: const TextStyle(
@@ -87,9 +88,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 const SizedBox(height: 40),
                 
                 // Verification code field
-                const Text(
+                Text(
                   'Kode Verifikasi',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.darkGray,
@@ -102,16 +103,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                   textCapitalization: TextCapitalization.characters,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Kode verifikasi tidak boleh kosong';
+                      return 'auth.validation.code_required'.tr();
                     }
                     if (value.length != 6) {
                       return 'Kode verifikasi harus 6 karakter';
                     }
                     return null;
                   },
-                  decoration: const InputDecoration(
-                    hintText: 'Masukkan kode verifikasi (6 digit)',
-                    prefixIcon: Icon(
+                  decoration: InputDecoration(
+                    hintText: 'auth.verification_subtitle'.tr(),
+                    prefixIcon: const Icon(
                       Icons.confirmation_number_outlined,
                       color: AppColors.mediumGray,
                     ),
@@ -134,22 +135,22 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text(
-                            'Verifikasi Email',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        : Text(
+                            'auth.verify'.tr(),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Resend code
                 Center(
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         'Tidak menerima kode?',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.mediumGray,
                         ),
                       ),
@@ -165,9 +166,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                                 ),
                               )
-                            : const Text(
-                                'Kirim Ulang Kode',
-                                style: TextStyle(
+                            : Text(
+                                'auth.resend_code'.tr(),
+                                style: const TextStyle(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -191,9 +192,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         (route) => false,
                       );
                     },
-                    child: const Text(
+                    child: Text(
                       'Kembali ke Login',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.mediumGray,
                         decoration: TextDecoration.underline,
                       ),
@@ -263,7 +264,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
       NotificationHelper.showError(
         context,
-        'Terjadi kesalahan jaringan',
+        'auth.messages.network_error'.tr(),
       );
     } finally {
       if (mounted) {
@@ -297,7 +298,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
       NotificationHelper.showError(
         context,
-        'Terjadi kesalahan jaringan',
+        'auth.messages.network_error'.tr(),
       );
     } finally {
       if (mounted) {

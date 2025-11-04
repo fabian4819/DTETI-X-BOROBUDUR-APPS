@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'home/home_screen.dart';
 import 'navigation/api_map_navigation_screen.dart';
 import 'borobudurpedia/borobudurpedia_categories_screen.dart';
@@ -58,31 +59,31 @@ class _MainNavigationState extends State<MainNavigation> {
           unselectedLabelStyle: const TextStyle(
             fontSize: 12,
           ),
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Home',
+              icon: const Icon(Icons.home_outlined),
+              activeIcon: const Icon(Icons.home),
+              label: 'navigation.home'.tr(),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.map_outlined),
-              activeIcon: Icon(Icons.map),
-              label: 'Navigasi',
+              icon: const Icon(Icons.map_outlined),
+              activeIcon: const Icon(Icons.map),
+              label: 'navigation.explore'.tr(),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.article_outlined),
-              activeIcon: Icon(Icons.article),
-              label: 'Artikel',
+              icon: const Icon(Icons.article_outlined),
+              activeIcon: const Icon(Icons.article),
+              label: 'navigation.news'.tr(),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.event_outlined),
-              activeIcon: Icon(Icons.event),
-              label: 'Agenda',
+              icon: const Icon(Icons.event_outlined),
+              activeIcon: const Icon(Icons.event),
+              label: 'navigation.agenda'.tr(),
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Profil',
+              icon: const Icon(Icons.person_outline),
+              activeIcon: const Icon(Icons.person),
+              label: 'navigation.profile'.tr(),
             ),
           ],
         ),

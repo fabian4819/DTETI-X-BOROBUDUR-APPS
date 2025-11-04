@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'email_verification_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
@@ -57,19 +58,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
-                      'Bergabung Seperti Lainnya!',
+                    Text(
+                      'auth.register_title'.tr(),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.darkGray,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Jadikan Setiap Kunjungan Bermakna',
-                      style: TextStyle(
+                    Text(
+                      'auth.register_subtitle'.tr(),
+                      style: const TextStyle(
                         fontSize: 16,
                         color: AppColors.mediumGray,
                       ),
@@ -94,10 +95,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: const Text(
-                            'Masuk',
+                          child: Text(
+                            'auth.login'.tr(),
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.mediumGray),
+                            style: const TextStyle(color: AppColors.mediumGray),
                           ),
                         ),
                       ),
@@ -116,10 +117,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ],
                         ),
-                        child: const Text(
-                          'Daftar',
+                        child: Text(
+                          'auth.register'.tr(),
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppColors.darkGray,
                           ),
@@ -133,9 +134,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 32),
 
               // Name field
-              const Text(
-                'Nama Lengkap',
-                style: TextStyle(
+              Text(
+                'auth.full_name'.tr(),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
@@ -146,16 +147,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _nameController,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Nama tidak boleh kosong';
+                    return 'auth.validation.name_required'.tr();
                   }
                   if (value.length < 2) {
                     return 'Nama minimal 2 karakter';
                   }
                   return null;
                 },
-                decoration: const InputDecoration(
-                  hintText: 'Masukkan nama lengkap anda',
-                  prefixIcon: Icon(
+                decoration: InputDecoration(
+                  hintText: 'auth.full_name_hint'.tr(),
+                  prefixIcon: const Icon(
                     Icons.person_outline,
                     color: AppColors.mediumGray,
                   ),
@@ -165,9 +166,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 24),
 
               // Email field
-              const Text(
-                'Email',
-                style: TextStyle(
+              Text(
+                'auth.email'.tr(),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
@@ -179,16 +180,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Email tidak boleh kosong';
+                    return 'auth.validation.email_required'.tr();
                   }
                   if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                    return 'Format email tidak valid';
+                    return 'auth.validation.email_invalid'.tr();
                   }
                   return null;
                 },
-                decoration: const InputDecoration(
-                  hintText: 'Masukkan alamat email anda',
-                  prefixIcon: Icon(
+                decoration: InputDecoration(
+                  hintText: 'auth.email_hint'.tr(),
+                  prefixIcon: const Icon(
                     Icons.email_outlined,
                     color: AppColors.mediumGray,
                   ),
@@ -198,9 +199,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 24),
 
               // Password field
-              const Text(
-                'Password',
-                style: TextStyle(
+              Text(
+                'auth.password'.tr(),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
@@ -212,15 +213,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 obscureText: _obscurePassword,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Password tidak boleh kosong';
+                    return 'auth.validation.password_required'.tr();
                   }
                   if (value.length < 6) {
-                    return 'Password minimal 6 karakter';
+                    return 'auth.validation.password_min'.tr();
                   }
                   return null;
                 },
                 decoration: InputDecoration(
-                  hintText: 'Masukkan password anda',
+                  hintText: 'auth.password_hint'.tr(),
                   prefixIcon: const Icon(
                     Icons.lock_outline,
                     color: AppColors.mediumGray,
@@ -244,9 +245,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 24),
 
               // Confirm Password field
-              const Text(
-                'Konfirmasi Password',
-                style: TextStyle(
+              Text(
+                'auth.confirm_password'.tr(),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
@@ -258,15 +259,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 obscureText: _obscureConfirmPassword,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Konfirmasi password tidak boleh kosong';
+                    return 'auth.validation.password_required'.tr();
                   }
                   if (value != _passwordController.text) {
-                    return 'Password tidak sama';
+                    return 'auth.validation.password_mismatch'.tr();
                   }
                   return null;
                 },
                 decoration: InputDecoration(
-                  hintText: 'Konfirmasi password anda',
+                  hintText: 'auth.confirm_password_hint'.tr(),
                   prefixIcon: const Icon(
                     Icons.lock_outline,
                     color: AppColors.mediumGray,
@@ -303,19 +304,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text(
-                          'Daftar',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      : Text(
+                          'auth.register'.tr(),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                 ),
               ),
 
               const SizedBox(height: 24),
 
-              const Center(
+              Center(
                 child: Text(
-                  'Atau masuk dengan',
-                  style: TextStyle(color: AppColors.mediumGray),
+                  'auth.or_register_with'.tr(),
+                  style: const TextStyle(color: AppColors.mediumGray),
                 ),
               ),
 
@@ -432,7 +433,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
+          content: Text('auth.error_occurred'.tr().replaceAll('{}', e.toString())),
           backgroundColor: AppColors.error,
         ),
       );

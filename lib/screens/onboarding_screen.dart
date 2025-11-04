@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'dart:ui'; // Import for ImageFilter
+import 'package:easy_localization/easy_localization.dart';
 import 'auth_wrapper.dart';
 import '../utils/app_colors.dart';
+import '../services/language_service.dart';
 
-class OnboardingScreen extends StatelessWidget {
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final LanguageService _languageService = LanguageService();
 
   @override
   Widget build(BuildContext context) {
@@ -21,10 +30,23 @@ class OnboardingScreen extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Spacer to push content to the bottom (optional, adjust flex as needed)
+            // Language selector at the top
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _buildLanguageButton('id', '🇮🇩'),
+                    const SizedBox(width: 12),
+                    _buildLanguageButton('en', '🇬🇧'),
+                  ],
+                ),
+              ),
+            ),
+            // Spacer to push content to the bottom
             const Expanded(
-              flex:
-                  3, // Adjust this flex to control how much space the top empty part takes
+              flex: 3,
               child: SizedBox.shrink(), // Empty space
             ),
             ClipRRect(
@@ -48,10 +70,10 @@ class OnboardingScreen extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Jelajahi Borobudur\nDalam Genggaman',
+                      Text(
+                        'onboarding.title'.tr(),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1E293B),
@@ -59,10 +81,10 @@ class OnboardingScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Navigasi interaktif, budaya lengkap,\npengalaman tak terlupakan',
+                      Text(
+                        'onboarding.subtitle'.tr(),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 15,
                           color: Color(0xFF475569),
                           height: 1.5,
@@ -73,7 +95,12 @@ class OnboardingScreen extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
+                            // Save language choice before proceeding
+                            await _languageService.saveLanguage(
+                              context.locale.languageCode,
+                            );
+                            if (!mounted) return;
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -92,9 +119,9 @@ class OnboardingScreen extends StatelessWidget {
                             elevation: 8,
                             shadowColor: AppColors.primary.withOpacity(0.4),
                           ),
-                          child: const Text(
-                            'Mulai Petualangan',
-                            style: TextStyle(
+                          child: Text(
+                            'onboarding.start_button'.tr(),
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -106,6 +133,58 @@ class OnboardingScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageButton(String languageCode, String flag) {
+    final isSelected = context.locale.languageCode == languageCode;
+
+    return GestureDetector(
+      onTap: () async {
+        final locale = Locale(languageCode);
+        await _languageService.changeLanguage(context, locale);
+        setState(() {});
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.white.withOpacity(0.95)
+              : Colors.white.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.white,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              flag,
+              style: const TextStyle(fontSize: 20),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _languageService.getLanguageName(languageCode),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? AppColors.primary : const Color(0xFF475569),
               ),
             ),
           ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../utils/app_colors.dart';
@@ -66,19 +67,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
-                      'Bergabung Seperti Lainnya!',
+                    Text(
+                      'auth.login_title'.tr(),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.darkGray,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Jadikan Setiap Kunjungan Bermakna',
-                      style: TextStyle(
+                    Text(
+                      'auth.login_subtitle'.tr(),
+                      style: const TextStyle(
                         fontSize: 16,
                         color: AppColors.mediumGray,
                       ),
@@ -110,10 +111,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        child: const Text(
-                          'Masuk',
+                        child: Text(
+                          'auth.login'.tr(),
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppColors.darkGray,
                           ),
@@ -132,10 +133,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: const Text(
-                            'Daftar',
+                          child: Text(
+                            'auth.register'.tr(),
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.mediumGray),
+                            style: const TextStyle(color: AppColors.mediumGray),
                           ),
                         ),
                       ),
@@ -147,9 +148,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 32),
 
               // Email field
-              const Text(
-                'Email',
-                style: TextStyle(
+              Text(
+                'auth.email'.tr(),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
@@ -161,16 +162,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Email tidak boleh kosong';
+                    return 'auth.validation.email_required'.tr();
                   }
                   if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                    return 'Format email tidak valid';
+                    return 'auth.validation.email_invalid'.tr();
                   }
                   return null;
                 },
-                decoration: const InputDecoration(
-                  hintText: 'Masukkan alamat email anda',
-                  prefixIcon: Icon(
+                decoration: InputDecoration(
+                  hintText: 'auth.email_hint'.tr(),
+                  prefixIcon: const Icon(
                     Icons.email_outlined,
                     color: AppColors.mediumGray,
                   ),
@@ -180,9 +181,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
 
               // Password field
-              const Text(
-                'Password',
-                style: TextStyle(
+              Text(
+                'auth.password'.tr(),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
@@ -194,15 +195,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: _obscurePassword,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Password tidak boleh kosong';
+                    return 'auth.validation.password_required'.tr();
                   }
                   if (value.length < 6) {
-                    return 'Password minimal 6 karakter';
+                    return 'auth.validation.password_min'.tr();
                   }
                   return null;
                 },
                 decoration: InputDecoration(
-                  hintText: 'Masukkan password anda',
+                  hintText: 'auth.password_hint'.tr(),
                   prefixIcon: const Icon(
                     Icons.lock_outline,
                     color: AppColors.mediumGray,
@@ -237,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                     activeColor: AppColors.primary,
                   ),
-                  const Text('Ingat saya'),
+                  Text('auth.remember_me'.tr()),
                   const Spacer(),
                   TextButton(
                     onPressed: () {
@@ -248,9 +249,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       );
                     },
-                    child: const Text(
-                      'Lupa password?',
-                      style: TextStyle(color: AppColors.primary),
+                    child: Text(
+                      'auth.forgot_password'.tr(),
+                      style: const TextStyle(color: AppColors.primary),
                     ),
                   ),
                 ],
@@ -272,9 +273,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text(
-                          'Masuk',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      : Text(
+                          'auth.login'.tr(),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                 ),
               ),
@@ -282,10 +283,10 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
 
 
-              const Center(
+              Center(
                 child: Text(
-                  'Atau masuk dengan',
-                  style: TextStyle(color: AppColors.mediumGray),
+                  'auth.or_login_with'.tr(),
+                  style: const TextStyle(color: AppColors.mediumGray),
                 ),
               ),
 
@@ -395,7 +396,7 @@ class _LoginScreenState extends State<LoginScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
+          content: Text('auth.error_occurred'.tr().replaceAll('{}', e.toString())),
           backgroundColor: AppColors.error,
         ),
       );

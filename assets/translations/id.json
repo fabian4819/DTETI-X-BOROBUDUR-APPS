@@ -1,0 +1,191 @@
+{
+  "app_name": "Wonderful Borobudur",
+
+  "onboarding": {
+    "title": "Jelajahi Borobudur\nDalam Genggaman",
+    "subtitle": "Navigasi interaktif, budaya lengkap,\npengalaman tak terlupakan",
+    "start_button": "Mulai Petualangan"
+  },
+
+  "auth": {
+    "login": "Masuk",
+    "register": "Daftar",
+    "logout": "Keluar",
+    "email": "Email",
+    "email_hint": "Masukkan alamat email anda",
+    "password": "Password",
+    "password_hint": "Masukkan password anda",
+    "confirm_password": "Konfirmasi Password",
+    "confirm_password_hint": "Masukkan ulang password anda",
+    "full_name": "Nama Lengkap",
+    "full_name_hint": "Masukkan nama lengkap anda",
+    "phone": "Nomor Telepon",
+    "phone_hint": "Masukkan nomor telepon anda",
+    "remember_me": "Ingat saya",
+    "forgot_password": "Lupa password?",
+    "or_login_with": "Atau masuk dengan",
+    "or_register_with": "Atau daftar dengan",
+    "dont_have_account": "Belum punya akun?",
+    "already_have_account": "Sudah punya akun?",
+    "login_title": "Bergabung Seperti Lainnya!",
+    "login_subtitle": "Jadikan Setiap Kunjungan Bermakna",
+    "register_title": "Daftar Sekarang",
+    "register_subtitle": "Mulai petualangan Anda di Borobudur",
+    "verification_title": "Verifikasi Email",
+    "verification_subtitle": "Masukkan kode verifikasi (6 digit)",
+    "resend_code": "Kirim Ulang Kode",
+    "verify": "Verifikasi",
+    "send_reset_code": "Kirim Kode Reset",
+    "reset_password": "Reset Password",
+    "new_password": "Password Baru",
+    "error_occurred": "Terjadi kesalahan: {}",
+
+    "validation": {
+      "email_required": "Email tidak boleh kosong",
+      "email_invalid": "Format email tidak valid",
+      "password_required": "Password tidak boleh kosong",
+      "password_min": "Password minimal 6 karakter",
+      "password_mismatch": "Password tidak cocok",
+      "name_required": "Nama tidak boleh kosong",
+      "phone_required": "Nomor telepon tidak boleh kosong",
+      "code_required": "Kode verifikasi tidak boleh kosong"
+    },
+
+    "messages": {
+      "login_success": "Login berhasil",
+      "register_success": "Registrasi berhasil",
+      "logout_success": "Logout berhasil",
+      "verification_success": "Email berhasil diverifikasi!",
+      "verification_sent": "Kode verifikasi telah dikirim ulang!",
+      "reset_sent": "Kode reset password telah dikirim",
+      "reset_success": "Reset password berhasil",
+      "network_error": "Terjadi kesalahan jaringan",
+      "token_unavailable": "Token refresh tidak tersedia"
+    }
+  },
+
+  "navigation": {
+    "home": "Home",
+    "explore": "Navigasi",
+    "news": "Artikel",
+    "agenda": "Agenda",
+    "profile": "Profil"
+  },
+
+  "home": {
+    "welcome": "Selamat datang",
+    "subtitle": "Nikmati pengalaman wisatamu tanpa batas",
+    "quick_access": "Akses Cepat",
+    "facilities": "Fasilitas Borobudur",
+    "explore_detail": "Jelajahi setiap detail Candi Borobudur dengan panduan lengkap",
+    "see_all": "Lihat semua",
+    "see_detail": "Lihat Detail"
+  },
+
+  "navigation_screen": {
+    "title": "Navigasi Candi Borobudur",
+    "setup_title": "Setup Navigasi",
+    "search_placeholder": "Cari lokasi...",
+    "start_navigation": "Mulai Navigasi",
+    "stop_navigation": "Stop Navigasi",
+    "navigation_started": "Navigasi dimulai",
+    "arrived": "Selamat! Anda telah tiba di",
+    "starting_to": "Memulai navigasi menuju",
+    "turn_left": "belok kiri",
+    "turn_right": "belok kanan",
+    "go_straight": "Lurus terus",
+    "very_close": "Anda sudah sangat dekat dengan tujuan",
+    "destination_ahead": "Tujuan berada {} meter di depan"
+  },
+
+  "profile": {
+    "my_profile": "Profilku",
+    "favorites": "Favorit",
+    "favorite_places": "Tempat Favorit",
+    "visit_history": "Riwayat Kunjungan",
+    "settings": "Pengaturan",
+    "logout_account": "Keluar dari Akun",
+    "logout_confirm": "Apakah Anda yakin ingin keluar?"
+  },
+
+  "settings": {
+    "title": "Pengaturan",
+    "general": "Umum",
+    "appearance": "Tampilan",
+    "privacy": "Privasi & Keamanan",
+    "about": "Tentang",
+    "language": "Bahasa",
+    "select_language": "Pilih Bahasa",
+    "notifications": "Notifikasi",
+    "notifications_subtitle": "Terima notifikasi acara dan berita",
+    "notifications_enabled": "Notifikasi diaktifkan",
+    "notifications_disabled": "Notifikasi dimatikan",
+    "location_services": "Layanan Lokasi",
+    "location_subtitle": "Izinkan akses lokasi untuk navigasi",
+    "location_enabled": "Layanan lokasi diaktifkan",
+    "location_disabled": "Layanan lokasi dimatikan",
+    "voice_guidance": "Panduan Suara",
+    "voice_subtitle": "Aktifkan panduan suara saat navigasi",
+    "voice_enabled": "Panduan suara diaktifkan",
+    "voice_disabled": "Panduan suara dimatikan",
+    "theme": "Tema",
+    "select_theme": "Pilih Tema",
+    "theme_light": "Terang",
+    "theme_dark": "Gelap",
+    "theme_system": "Sistem",
+    "theme_changed": "Tema diubah ke {}",
+    "change_password": "Ubah Password",
+    "change_password_subtitle": "Perbarui password akun Anda",
+    "two_factor": "Verifikasi Dua Langkah",
+    "two_factor_subtitle": "Tingkatkan keamanan akun",
+    "delete_data": "Hapus Data",
+    "delete_data_subtitle": "Hapus semua data lokal",
+    "delete_data_confirm": "Apakah Anda yakin ingin menghapus semua data lokal?",
+    "data_deleted": "Data berhasil dihapus",
+    "about_app": "Tentang Aplikasi",
+    "help_faq": "Bantuan & FAQ",
+    "help_subtitle": "Dapatkan bantuan penggunaan aplikasi",
+    "send_feedback": "Kirim Feedback",
+    "feedback_subtitle": "Bantu kami meningkatkan aplikasi",
+    "version": "Versi",
+    "coming_soon": "Fitur {} akan segera hadir!"
+  },
+
+  "borobudurpedia": {
+    "title": "Borobudurpedia",
+    "search_placeholder": "Cari di sini",
+    "see_all": "Lihat semua"
+  },
+
+  "news": {
+    "title": "Berita & Artikel",
+    "latest": "Berita Terbaru"
+  },
+
+  "agenda": {
+    "title": "Agenda & Acara",
+    "register_event": "Daftar Acara",
+    "cancel": "Batal"
+  },
+
+  "facilities": {
+    "title": "Fasilitas",
+    "main_entrance": "Pintu Masuk Utama",
+    "parking_area": "Area Parkir"
+  },
+
+  "common": {
+    "yes": "Ya",
+    "no": "Tidak",
+    "ok": "OK",
+    "cancel": "Batal",
+    "save": "Simpan",
+    "delete": "Hapus",
+    "edit": "Edit",
+    "search": "Cari",
+    "loading": "Memuat...",
+    "error": "Terjadi kesalahan",
+    "retry": "Coba Lagi",
+    "back": "Kembali"
+  }
+}

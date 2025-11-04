@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import 'agenda_detail_screen.dart';
@@ -10,7 +11,7 @@ class AgendaScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Agenda & Acara'),
+        title: Text('agenda.title'.tr()),
         automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(

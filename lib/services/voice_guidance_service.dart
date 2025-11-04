@@ -1,4 +1,6 @@
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'language_service.dart';
 
 class VoiceGuidanceService {
   static final VoiceGuidanceService _instance = VoiceGuidanceService._internal();
@@ -6,27 +8,49 @@ class VoiceGuidanceService {
   VoiceGuidanceService._internal();
 
   final FlutterTts _flutterTts = FlutterTts();
+  final LanguageService _languageService = LanguageService();
   bool _isInitialized = false;
   bool _isEnabled = true;
+  String _currentLanguage = 'id-ID';
 
   bool get isEnabled => _isEnabled;
-  
-  Future<void> initialize() async {
+
+  Future<void> initialize({String? languageCode}) async {
     if (_isInitialized) return;
-    
+
+    // Use provided language code or default to Indonesian
+    final ttsLanguage = languageCode != null
+        ? _languageService.getTTSLanguageCode(languageCode)
+        : 'id-ID';
+
     try {
-      await _flutterTts.setLanguage('id-ID');
+      await _flutterTts.setLanguage(ttsLanguage);
       await _flutterTts.setSpeechRate(0.7);
       await _flutterTts.setVolume(1.0);
       await _flutterTts.setPitch(1.0);
+      _currentLanguage = ttsLanguage;
       _isInitialized = true;
     } catch (e) {
-      // Fallback to English if Indonesian not available
+      // Fallback to English if requested language not available
       await _flutterTts.setLanguage('en-US');
       await _flutterTts.setSpeechRate(0.8);
       await _flutterTts.setVolume(1.0);
       await _flutterTts.setPitch(1.0);
+      _currentLanguage = 'en-US';
       _isInitialized = true;
+    }
+  }
+
+  // Change TTS language dynamically
+  Future<void> changeLanguage(String languageCode) async {
+    final ttsLanguage = _languageService.getTTSLanguageCode(languageCode);
+    if (_currentLanguage == ttsLanguage) return;
+
+    try {
+      await _flutterTts.setLanguage(ttsLanguage);
+      _currentLanguage = ttsLanguage;
+    } catch (e) {
+      // Keep current language if change fails
     }
   }
 
@@ -51,35 +75,48 @@ class VoiceGuidanceService {
 
   String _enhanceInstruction(String instruction) {
     // Add contextual information to make instructions clearer
-    if (instruction.contains('Mulai')) {
-      return 'Navigasi dimulai. $instruction';
-    } else if (instruction.contains('Tiba')) {
-      return 'Anda telah $instruction. Navigasi selesai.';
-    } else if (instruction.contains('kanan') || instruction.contains('kiri')) {
-      return 'Dalam 50 meter, $instruction';
-    } else if (instruction.contains('Lurus')) {
-      return '$instruction terus';
+    // Check for localized keywords in both languages
+    final navigationStarted = 'navigation_screen.navigation_started'.tr();
+    final arrived = 'navigation_screen.arrived'.tr();
+    final turnRight = 'navigation_screen.turn_right'.tr();
+    final turnLeft = 'navigation_screen.turn_left'.tr();
+    final goStraight = 'navigation_screen.go_straight'.tr();
+
+    if (instruction.contains(navigationStarted) ||
+        instruction.toLowerCase().contains('start') ||
+        instruction.toLowerCase().contains('mulai')) {
+      return '$navigationStarted. $instruction';
+    } else if (instruction.contains(arrived) ||
+               instruction.toLowerCase().contains('arriv') ||
+               instruction.toLowerCase().contains('tiba')) {
+      return '$instruction';
+    } else if (instruction.contains(turnRight) || instruction.contains(turnLeft)) {
+      return '$instruction';
+    } else if (instruction.contains(goStraight)) {
+      return '$instruction';
     }
-    
+
     return instruction;
   }
 
   Future<void> announceArrival(String destinationName) async {
-    await speak('Selamat! Anda telah tiba di $destinationName');
+    await speak('${' navigation_screen.arrived'.tr()} $destinationName');
   }
 
   Future<void> announceNavigationStart(String destinationName, int estimatedTime) async {
     final minutes = (estimatedTime / 60).ceil();
-    await speak('Memulai navigasi menuju $destinationName. Estimasi waktu $minutes menit');
+    final startText = 'navigation_screen.starting_to'.tr();
+    await speak('$startText $destinationName');
   }
 
   Future<void> announceDistanceToDestination(double distance) async {
     if (distance < 10) {
-      await speak('Anda sudah sangat dekat dengan tujuan');
+      await speak('navigation_screen.very_close'.tr());
     } else if (distance < 50) {
-      await speak('Tujuan berada ${distance.round()} meter di depan');
+      final text = 'navigation_screen.destination_ahead'.tr();
+      await speak(text.replaceAll('{}', distance.round().toString()));
     } else if (distance < 100) {
-      await speak('Tujuan berada kurang dari 100 meter');
+      await speak('navigation_screen.very_close'.tr());
     }
   }
 

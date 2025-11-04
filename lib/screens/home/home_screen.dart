@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../borobudurpedia/borobudurpedia_main_screen.dart';
 import '../navigation/api_map_navigation_screen.dart';
 import '../borobudurpedia/borobudurpedia_categories_screen.dart';
@@ -40,7 +41,7 @@ class HomeScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Selamat datang,',
+                                'home.welcome'.tr(),
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.white.withOpacity(0.9),
@@ -72,9 +73,9 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    const Text(
-                      'Nikmati pengalaman wisatamu\ntanpa batas',
-                      style: TextStyle(
+                    Text(
+                      'home.subtitle'.tr(),
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
@@ -83,7 +84,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Jelajahi setiap detail Candi Borobudur dengan panduan lengkap',
+                      'home.explore_detail'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
@@ -101,9 +102,9 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Akses Cepat',
-                      style: TextStyle(
+                    Text(
+                      'home.quick_access'.tr(),
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.darkGray,
@@ -116,7 +117,7 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: _buildQuickAccessItem(
                             icon: Icons.navigation,
-                            label: 'Navigasi',
+                            label: 'navigation.explore'.tr(),
                             color: AppColors.primary,
                             onTap: () {
                               Navigator.push(
@@ -132,7 +133,7 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: _buildQuickAccessItem(
                             icon: Icons.article,
-                            label: 'Artikel',
+                            label: 'navigation.news'.tr(),
                             color: AppColors.secondary,
                             onTap: () {
                               Navigator.push(
@@ -171,7 +172,7 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: _buildQuickAccessItem(
                             icon: Icons.event,
-                            label: 'Agenda',
+                            label: 'navigation.agenda'.tr(),
                             color: AppColors.warning,
                             onTap: () {
                               Navigator.push(
@@ -187,7 +188,7 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: _buildQuickAccessItem(
                             icon: Icons.location_city,
-                            label: 'Fasilitas',
+                            label: 'facilities.title'.tr(),
                             color: AppColors.success,
                             onTap: () {
                               Navigator.push(
@@ -203,7 +204,7 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: _buildQuickAccessItem(
                             icon: Icons.person,
-                            label: 'Profil',
+                            label: 'navigation.profile'.tr(),
                             color: AppColors.error,
                             onTap: () {
                               Navigator.push(
@@ -232,9 +233,9 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Fasilitas Borobudur',
-                          style: TextStyle(
+                        Text(
+                          'home.facilities'.tr(),
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppColors.darkGray,
@@ -249,9 +250,9 @@ class HomeScreen extends StatelessWidget {
                               ),
                             );
                           },
-                          child: const Text(
-                            'Lihat semua',
-                            style: TextStyle(color: AppColors.primary),
+                          child: Text(
+                            'home.see_all'.tr(),
+                            style: const TextStyle(color: AppColors.primary),
                           ),
                         ),
                       ],
@@ -354,9 +355,9 @@ class HomeScreen extends StatelessWidget {
                                                     BorderRadius.circular(10),
                                               ),
                                             ),
-                                            child: const Text(
-                                              'Lihat Detail',
-                                              style: TextStyle(
+                                            child: Text(
+                                              'home.see_detail'.tr(),
+                                              style: const TextStyle(
                                                 fontWeight: FontWeight.w600,
                                               ),
                                             ),
@@ -384,18 +385,18 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Agenda terbaru Borobudur',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.darkGray,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Jangan sampai terlewat',
-                      style: TextStyle(color: AppColors.mediumGray),
+                      style: const TextStyle(color: AppColors.mediumGray),
                     ),
                     const SizedBox(height: 16),
                     Container(
@@ -448,7 +449,7 @@ class HomeScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Perayaan Waisak di Borobudur 2025',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
@@ -457,7 +458,7 @@ class HomeScreen extends StatelessWidget {
                                   SizedBox(height: 4),
                                   Text(
                                     '9 Mei 2025',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 14,
                                       color: Colors.white,
                                     ),

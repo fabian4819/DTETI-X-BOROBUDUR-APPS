@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Bash(flutter analyze:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(flutter pub get:*)",
+      "Bash(flutter run:*)",
+      "Bash(nc:*)",
+      "Bash(lib/screens/auth/reset_password_screen.dart)",
+      "Bash(for:*)",
+      "Bash(do)",
+      "Bash(if ! grep -q \"easy_localization\" \"$file\")",
+      "Bash(then)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(lib/screens/home/home_screen.dart)",
+      "Bash(flutter clean:*)"
     ],
     "deny": [],
     "ask": []

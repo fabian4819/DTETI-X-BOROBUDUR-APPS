@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'login_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
@@ -35,9 +36,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.darkGray),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Reset Password',
-          style: TextStyle(
+        title: Text(
+          'auth.reset_password'.tr(),
+          style: const TextStyle(
             color: AppColors.darkGray,
             fontWeight: FontWeight.w600,
           ),
@@ -65,9 +66,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 const SizedBox(height: 32),
                 
                 // Title and description
-                const Text(
-                  'Reset Password Anda',
-                  style: TextStyle(
+                Text(
+                  'auth.reset_password'.tr(),
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: AppColors.darkGray,
@@ -88,7 +89,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 const SizedBox(height: 40),
                 
                 // Reset code field
-                const Text(
+                Text(
                   'Kode Reset',
                   style: TextStyle(
                     fontSize: 14,
@@ -103,7 +104,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   textCapitalization: TextCapitalization.characters,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Kode reset tidak boleh kosong';
+                      return 'auth.validation.code_required'.tr();
                     }
                     if (value.length != 6) {
                       return 'Kode reset harus 6 karakter';
@@ -122,9 +123,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 const SizedBox(height: 24),
                 
                 // New password field
-                const Text(
-                  'Password Baru',
-                  style: TextStyle(
+                Text(
+                  'auth.new_password'.tr(),
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.darkGray,
@@ -136,15 +137,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   obscureText: _obscurePassword,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Password baru tidak boleh kosong';
+                      return 'auth.validation.password_required'.tr();
                     }
                     if (value.length < 6) {
-                      return 'Password minimal 6 karakter';
+                      return 'auth.validation.password_min'.tr();
                     }
                     return null;
                   },
                   decoration: InputDecoration(
-                    hintText: 'Masukkan password baru',
+                    hintText: 'auth.password_hint'.tr(),
                     prefixIcon: const Icon(
                       Icons.lock_outline,
                       color: AppColors.mediumGray,
@@ -168,9 +169,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 const SizedBox(height: 24),
                 
                 // Confirm password field
-                const Text(
-                  'Konfirmasi Password Baru',
-                  style: TextStyle(
+                Text(
+                  'auth.confirm_password'.tr(),
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.darkGray,
@@ -182,15 +183,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   obscureText: _obscureConfirmPassword,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Konfirmasi password tidak boleh kosong';
+                      return 'auth.validation.password_required'.tr();
                     }
                     if (value != _passwordController.text) {
-                      return 'Password tidak sama';
+                      return 'auth.validation.password_mismatch'.tr();
                     }
                     return null;
                   },
                   decoration: InputDecoration(
-                    hintText: 'Konfirmasi password baru',
+                    hintText: 'auth.confirm_password_hint'.tr(),
                     prefixIcon: const Icon(
                       Icons.lock_outline,
                       color: AppColors.mediumGray,
@@ -286,8 +287,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password berhasil direset!'),
+          SnackBar(
+            content: Text('auth.messages.reset_success'.tr()),
             backgroundColor: AppColors.success,
           ),
         );
@@ -316,7 +317,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
+          content: Text('auth.error_occurred'.tr().replaceAll('{}', e.toString())),
           backgroundColor: AppColors.error,
         ),
       );

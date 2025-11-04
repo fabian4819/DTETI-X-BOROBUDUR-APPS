@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'screens/splash_screen.dart';
 import 'utils/app_colors.dart';
 
-void main() {
-  runApp(const BorobudurApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await EasyLocalization.ensureInitialized();
+
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [Locale('id'), Locale('en')],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('id'),
+      startLocale: const Locale('id'),
+      saveLocale: true,
+      useOnlyLangCode: true,
+      child: const BorobudurApp(),
+    ),
+  );
 }
 
 class BorobudurApp extends StatelessWidget {
@@ -15,6 +29,9 @@ class BorobudurApp extends StatelessWidget {
     return MaterialApp(
       title: 'Wonderful Borobudur',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         primaryColor: AppColors.primary,
