@@ -19,94 +19,96 @@ class OnboardingScreen extends StatelessWidget {
             fit: BoxFit.cover, // Cover the entire screen
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Spacer to push content to the bottom (optional, adjust flex as needed)
-              const Expanded(
-                flex:
-                    3, // Adjust this flex to control how much space the top empty part takes
-                child: SizedBox.shrink(), // Empty space
+        child: Column(
+          children: [
+            // Spacer to push content to the bottom (optional, adjust flex as needed)
+            const Expanded(
+              flex:
+                  3, // Adjust this flex to control how much space the top empty part takes
+              child: SizedBox.shrink(), // Empty space
+            ),
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(30),
               ),
-              Expanded(
-                flex: 2,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(30),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.fromLTRB(
+                    30,
+                    30,
+                    30,
+                    30 + MediaQuery.of(context).padding.bottom,
                   ),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(30),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.6),
-                      ),
-                      child: SingleChildScrollView(
-                        // Tambahkan ini
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Pelajari Lebih Dekat,\nLebih Bermakna',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 25,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.darkGray,
-                                height: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              'Jelajahi setiap sudut Candi Borobudur dengan panduan interaktif dan informasi mendalam tentang warisan budaya dunia ini.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.mediumGray,
-                                height: 1.5,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const AuthWrapper(),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 18,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                  elevation: 5,
-                                ),
-                                child: const Text(
-                                  'Mulai Menjelajah',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.95),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Jelajahi Borobudur\nDalam Genggaman',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                          height: 1.2,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Navigasi interaktif, budaya lengkap,\npengalaman tak terlupakan',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF475569),
+                          height: 1.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AuthWrapper(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 18,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            elevation: 8,
+                            shadowColor: AppColors.primary.withOpacity(0.4),
+                          ),
+                          child: const Text(
+                            'Mulai Petualangan',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

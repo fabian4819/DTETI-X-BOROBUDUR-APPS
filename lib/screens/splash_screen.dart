@@ -113,7 +113,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       const SizedBox(height: 30),
                       const Text(
-                        'Borobudur Explorer',
+                        'Wonderful Borobudur',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,

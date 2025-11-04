@@ -1249,7 +1249,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
               if (opened) {
                 _showMessage('Pengaturan dibuka. Aktifkan izin lokasi lalu kembali ke aplikasi.', Colors.blue);
               } else {
-                _showMessage('Tidak dapat membuka pengaturan. Cari "Borobudur Explorer" di Pengaturan sistem.', Colors.red);
+                _showMessage('Tidak dapat membuka pengaturan. Cari "Wonderful Borobudur" di Pengaturan sistem.', Colors.red);
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
