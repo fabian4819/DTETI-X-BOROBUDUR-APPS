@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../models/temple_node.dart';
 import '../../services/temple_navigation_service.dart';
 import '../../utils/app_colors.dart';
@@ -572,19 +573,19 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   Future<void> _startNavigation() async {
     // Check destination
     if (destinationNode == null && destinationFeature == null) {
-      _showMessage('Pilih tujuan terlebih dahulu', Colors.orange);
+      _showMessage('navigation_detail.select_destination'.tr(), Colors.orange);
       return;
     }
 
     // Check start location based on mode
     if (useCurrentLocation) {
       if (_currentPosition == null) {
-        _showMessage('Lokasi GPS tidak tersedia', Colors.red);
+        _showMessage('navigation_detail.location_unavailable'.tr(), Colors.red);
         return;
       }
     } else {
       if (startNode == null && startFeature == null) {
-        _showMessage('Pilih lokasi awal terlebih dahulu', Colors.orange);
+        _showMessage('navigation_detail.select_destination'.tr(), Colors.orange);
         return;
       }
     }
@@ -640,7 +641,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
       setState(() {
         _showLoadingOverlay = false;
       });
-      _showMessage('Gagal menghitung rute: $e', Colors.red);
+      _showMessage('navigation_detail.navigation_failed'.tr(args: [e.toString()]), Colors.red);
     }
   }
   
@@ -653,7 +654,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
       _lastSpokenInstruction = ''; // Reset voice guidance
       _setupPolylines(); // Remove route polylines
     });
-    _speakInstruction('Navigasi dihentikan.');
+    _speakInstruction('navigation_detail.stop_navigation'.tr());
   }
   
   void _showMessage(String message, Color color) {
@@ -669,18 +670,18 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   void _showRoutePreviewDialog(NavigationResult result) {
     final distance = result.totalDistance?.toStringAsFixed(0) ?? '0';
     final timeMinutes = ((result.estimatedTime ?? 0) / 60).ceil();
-    final timeText = timeMinutes < 1 ? '< 1 menit' : '$timeMinutes menit';
-    
+    final timeText = timeMinutes < 1 ? '< 1 ${'visit_history_detail.minutes'.tr()}' : '$timeMinutes ${'visit_history_detail.minutes'.tr()}';
+
     String startLocationName = '';
     String destinationName = '';
-    
+
     if (useCurrentLocation) {
-      startLocationName = 'Lokasi Anda Saat Ini';
+      startLocationName = 'navigation_detail.current_location'.tr();
     } else {
-      startLocationName = startNode?.name ?? startFeature?.name ?? 'Lokasi Kustom';
+      startLocationName = startNode?.name ?? startFeature?.name ?? 'navigation_detail.custom_location'.tr();
     }
-    
-    destinationName = destinationNode?.name ?? destinationFeature?.name ?? 'Tujuan';
+
+    destinationName = destinationNode?.name ?? destinationFeature?.name ?? 'navigation_detail.set_destination'.tr();
     
     showDialog(
       context: context,
@@ -749,7 +750,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                       _buildRouteInfoCard(
                         icon: Icons.my_location,
                         iconColor: Colors.green,
-                        title: 'Dari',
+                        title: 'common.start'.tr(),
                         subtitle: startLocationName,
                       ),
                       const SizedBox(height: 16),
@@ -772,7 +773,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'Rute Terpendek',
+                                'common.distance'.tr(),
                                 style: TextStyle(
                                   color: AppColors.accent,
                                   fontWeight: FontWeight.w600,
@@ -788,7 +789,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                       _buildRouteInfoCard(
                         icon: Icons.location_on,
                         iconColor: Colors.red,
-                        title: 'Ke',
+                        title: 'common.location'.tr(),
                         subtitle: destinationName,
                       ),
                       
@@ -814,7 +815,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                             Expanded(
                               child: _buildStatItem(
                                 icon: Icons.straighten,
-                                label: 'Jarak',
+                                label: 'common.distance'.tr(),
                                 value: '${distance}m',
                                 color: AppColors.primary,
                               ),
@@ -827,7 +828,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                             Expanded(
                               child: _buildStatItem(
                                 icon: Icons.access_time,
-                                label: 'Estimasi Waktu',
+                                label: 'navigation_detail.estimated_time_short'.tr(),
                                 value: timeText,
                                 color: AppColors.accent,
                               ),
@@ -1028,13 +1029,13 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                           ),
                           elevation: 2,
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.navigation, size: 18),
                             SizedBox(width: 8),
                             Text(
-                              'Mulai Navigasi',
+                              'navigation_detail.start_navigation'.tr(),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -1154,16 +1155,16 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
     });
     
     _showMessage(
-      'Navigasi dimulai! Jarak: ${(result.totalDistance ?? 0).toStringAsFixed(0)}m',
+      '${'navigation_detail.navigation_started_title'.tr()}! ${'navigation_detail.distance_label'.tr(args: [(result.totalDistance ?? 0).toStringAsFixed(0)])}',
       Colors.green,
     );
-    
+
     // Start simulation for testing
     _navigationService.startDummyNavigationSimulation();
-    
+
     // Speak initial instruction
     if (_isVoiceEnabled) {
-      await _speakInstruction('Navigasi dimulai. Ikuti petunjuk arah.');
+      await _speakInstruction('navigation_detail.navigation_started_title'.tr());
     }
   }
   
@@ -1172,40 +1173,34 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Izin Lokasi Diperlukan'),
-        content: const Text(
-          'Aplikasi memerlukan izin lokasi untuk:\n'
-          '• Menampilkan posisi Anda di peta\n'
-          '• Navigasi dari lokasi saat ini\n'
-          '• Memberikan petunjuk arah yang akurat\n\n'
-          'Apakah Anda ingin memberikan izin lokasi?'
-        ),
+        title: Text('navigation_detail.permission_required'.tr()),
+        content: Text('navigation_detail.permission_message'.tr()),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _showMessage('Izin lokasi ditolak. Gunakan mode lokasi kustom.', Colors.orange);
+              _showMessage('navigation_detail.deny'.tr(), Colors.orange);
             },
-            child: const Text('Tolak'),
+            child: Text('navigation_detail.deny'.tr()),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              
+
               // Check if permission is already granted first
               final alreadyGranted = await _navigationService.hasLocationPermission();
               if (alreadyGranted) {
-                _showMessage('Izin lokasi sudah diberikan!', Colors.green);
+                _showMessage('navigation_detail.allow'.tr(), Colors.green);
                 _initializeLocationTracking();
                 return;
               }
-              
+
               // Try to request permission
               final hasPermission = await _navigationService.requestLocationPermission();
               if (hasPermission) {
                 // Update cache
                 _hasLocationPermission = true;
-                _showMessage('Izin lokasi diberikan!', Colors.green);
+                _showMessage('navigation_detail.allow'.tr(), Colors.green);
                 _initializeLocationTracking();
               } else {
                 // Show settings dialog for permanently denied permission
@@ -1213,7 +1208,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Izinkan', style: TextStyle(color: Colors.white)),
+            child: Text('navigation_detail.allow'.tr(), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1225,35 +1220,28 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Buka Pengaturan Aplikasi'),
-        content: const Text(
-          'Izin lokasi diperlukan untuk navigasi. Aplikasi akan membuka Pengaturan untuk mengizinkan akses lokasi.\n\n'
-          'Langkah:\n'
-          '1. Pilih "Permissions" atau "Izin"\n'
-          '2. Pilih "Location" atau "Lokasi"\n'
-          '3. Pilih "Allow all the time" atau "Izinkan selalu"\n'
-          '4. Kembali ke aplikasi'
-        ),
+        title: Text('navigation_detail.open_settings'.tr()),
+        content: Text('navigation_detail.settings_message'.tr()),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _showMessage('Gunakan mode lokasi kustom untuk navigasi.', Colors.orange);
+              _showMessage('navigation_detail.custom_location'.tr(), Colors.orange);
             },
-            child: const Text('Batal'),
+            child: Text('common.cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
               final opened = await _navigationService.openLocationSettings();
               if (opened) {
-                _showMessage('Pengaturan dibuka. Aktifkan izin lokasi lalu kembali ke aplikasi.', Colors.blue);
+                _showMessage('navigation_detail.open_settings_button'.tr(), Colors.blue);
               } else {
-                _showMessage('Tidak dapat membuka pengaturan. Cari "Wonderful Borobudur" di Pengaturan sistem.', Colors.red);
+                _showMessage('navigation_detail.settings_message'.tr(), Colors.red);
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Buka Pengaturan', style: TextStyle(color: Colors.white)),
+            child: Text('navigation_detail.open_settings_button'.tr(), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1281,9 +1269,9 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Text('Type: ${node.type}'),
-                Text('Level: ${node.level}'),
-                if (node.description != null) Text('Description: ${node.description}'),
+                Text('navigation_detail.type_label'.tr(args: [node.type])),
+                Text('navigation_detail.level_label'.tr(args: [node.level.toString()])),
+                if (node.description != null) Text('navigation_detail.description_label'.tr(args: [node.description!])),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -1301,7 +1289,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
                           ),
-                          child: const Text('Set sebagai Start', style: TextStyle(color: Colors.white)),
+                          child: Text('navigation_detail.set_as_start'.tr(), style: TextStyle(color: Colors.white)),
                         ),
                       ),
                     if (!useCurrentLocation) const SizedBox(width: 8),
@@ -1318,7 +1306,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                         ),
-                        child: const Text('Set sebagai Tujuan', style: TextStyle(color: Colors.white)),
+                        child: Text('navigation_detail.set_as_tujuan'.tr(), style: TextStyle(color: Colors.white)),
                       ),
                     ),
                   ],
@@ -1354,10 +1342,10 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Text('Type: ${feature.type}'),
-                Text('Level: ${feature.level}'),
-                if (feature.description != null) Text('Description: ${feature.description}'),
-                if (feature.distanceM != null) Text('Distance: ${feature.distanceM!.toStringAsFixed(0)}m'),
+                Text('navigation_detail.type_label'.tr(args: [feature.type])),
+                Text('navigation_detail.level_label'.tr(args: [feature.level.toString()])),
+                if (feature.description != null) Text('navigation_detail.description_label'.tr(args: [feature.description!])),
+                if (feature.distanceM != null) Text('navigation_detail.distance_label'.tr(args: [feature.distanceM!.toStringAsFixed(0)])),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -1375,7 +1363,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
                           ),
-                          child: const Text('Set sebagai Start', style: TextStyle(color: Colors.white)),
+                          child: Text('navigation_detail.set_as_start'.tr(), style: TextStyle(color: Colors.white)),
                         ),
                       ),
                     if (!useCurrentLocation) const SizedBox(width: 8),
@@ -1392,7 +1380,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                         ),
-                        child: const Text('Set sebagai Tujuan', style: TextStyle(color: Colors.white)),
+                        child: Text('navigation_detail.set_as_tujuan'.tr(), style: TextStyle(color: Colors.white)),
                       ),
                     ),
                   ],
@@ -1415,8 +1403,8 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          useCurrentLocation ? 'Peta Navigasi Borobudur' : 'Navigasi - Mode Kustom',
-          style: const TextStyle(
+          useCurrentLocation ? 'navigation_detail.temple_title'.tr() : 'navigation_detail.custom_start'.tr(),
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Colors.black,
@@ -1439,7 +1427,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                 _flutterTts.stop();
               }
             },
-            tooltip: _isVoiceEnabled ? 'Matikan Suara' : 'Hidupkan Suara',
+            tooltip: _isVoiceEnabled ? 'settings.voice_enabled'.tr() : 'settings.voice_disabled'.tr(),
           ),
           // Start location mode toggle
           PopupMenuButton<bool>(
@@ -1465,7 +1453,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                   children: [
                     Icon(Icons.my_location, color: useCurrentLocation ? Colors.blue : Colors.grey),
                     const SizedBox(width: 8),
-                    const Text('Lokasi Saat Ini'),
+                    Text('navigation_detail.current_location'.tr()),
                   ],
                 ),
               ),
@@ -1475,7 +1463,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                   children: [
                     Icon(Icons.place, color: !useCurrentLocation ? Colors.orange : Colors.grey),
                     const SizedBox(width: 8),
-                    const Text('Lokasi Kustom'),
+                    Text('navigation_detail.custom_location'.tr()),
                   ],
                 ),
               ),
@@ -1612,8 +1600,8 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Sedang Bernavigasi',
+                                Text(
+                                  'navigation_detail.navigation_started_title'.tr(),
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -1664,8 +1652,8 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                                       color: AppColors.primary,
                                     ),
                                   ),
-                                  const Text(
-                                    'Jarak',
+                                  Text(
+                                    'common.distance'.tr(),
                                     style: TextStyle(fontSize: 12, color: Colors.grey),
                                   ),
                                 ],
@@ -1680,8 +1668,8 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                                       color: AppColors.primary,
                                     ),
                                   ),
-                                  const Text(
-                                    'Waktu',
+                                  Text(
+                                    'common.time'.tr(),
                                     style: TextStyle(fontSize: 12, color: Colors.grey),
                                   ),
                                 ],
@@ -1774,7 +1762,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                         child: ElevatedButton.icon(
                           onPressed: isNavigating ? _stopNavigation : _startNavigation,
                           icon: Icon(isNavigating ? Icons.stop : Icons.navigation),
-                          label: Text(isNavigating ? 'Stop Navigasi' : 'Mulai Navigasi'),
+                          label: Text(isNavigating ? 'navigation_detail.stop_navigation'.tr() : 'navigation_detail.start_navigation'.tr()),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isNavigating ? Colors.red : AppColors.primary,
                             foregroundColor: Colors.white,

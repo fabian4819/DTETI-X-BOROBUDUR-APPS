@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../utils/app_colors.dart';
 
 class FacilitiesScreen extends StatelessWidget {
@@ -8,66 +9,66 @@ class FacilitiesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final facilities = [
       {
-        'name': 'Toilet',
+        'name': 'facilities_detail.toilet'.tr(),
         'icon': Icons.wc,
         'color': AppColors.primary,
-        'description': 'Fasilitas toilet tersedia di berbagai lokasi',
+        'description': 'facilities_detail.toilet_desc'.tr(),
         'locations': ['Pintu Masuk Utama', 'Area Parkir', 'Museum', 'Rest Area']
       },
       {
-        'name': 'Mushola',
+        'name': 'facilities_detail.mushola'.tr(),
         'icon': Icons.mosque,
         'color': AppColors.success,
-        'description': 'Tempat ibadah untuk pengunjung muslim',
+        'description': 'facilities_detail.mushola_desc'.tr(),
         'locations': ['Dekat Pintu Masuk', 'Area Parkir Timur']
       },
       {
-        'name': 'Kantin',
+        'name': 'facilities_detail.canteen'.tr(),
         'icon': Icons.restaurant,
         'color': AppColors.warning,
-        'description': 'Tempat makan dan minum',
+        'description': 'facilities_detail.canteen_desc'.tr(),
         'locations': ['Food Court Utama', 'Warung Tradisional', 'Cafe Museum']
       },
       {
-        'name': 'Souvenir Shop',
+        'name': 'facilities_detail.souvenir'.tr(),
         'icon': Icons.shopping_bag,
         'color': AppColors.accent,
-        'description': 'Toko oleh-oleh dan cinderamata',
+        'description': 'facilities_detail.souvenir_desc'.tr(),
         'locations': ['Toko Utama', 'Stan Kerajinan', 'Museum Gift Shop']
       },
       {
-        'name': 'Parkir',
+        'name': 'facilities_detail.parking'.tr(),
         'icon': Icons.local_parking,
         'color': AppColors.secondary,
-        'description': 'Area parkir kendaraan',
+        'description': 'facilities_detail.parking_desc'.tr(),
         'locations': ['Parkir Mobil', 'Parkir Motor', 'Parkir Bus']
       },
       {
-        'name': 'ATM',
+        'name': 'facilities_detail.atm'.tr(),
         'icon': Icons.atm,
         'color': AppColors.error,
-        'description': 'Mesin ATM untuk kebutuhan finansial',
+        'description': 'facilities_detail.atm_desc'.tr(),
         'locations': ['ATM BCA', 'ATM Mandiri', 'ATM BRI']
       },
       {
-        'name': 'Klinik Kesehatan',
+        'name': 'facilities_detail.clinic'.tr(),
         'icon': Icons.local_hospital,
         'color': AppColors.primary,
-        'description': 'Fasilitas kesehatan dan P3K',
+        'description': 'facilities_detail.clinic_desc'.tr(),
         'locations': ['Pos Kesehatan Utama', 'Mobile Clinic']
       },
       {
-        'name': 'Wifi Gratis',
+        'name': 'facilities_detail.wifi'.tr(),
         'icon': Icons.wifi,
         'color': AppColors.success,
-        'description': 'Akses internet gratis untuk pengunjung',
+        'description': 'facilities_detail.wifi_desc'.tr(),
         'locations': ['Seluruh Area Candi', 'Museum', 'Rest Area']
       },
       {
-        'name': 'Information Center',
+        'name': 'facilities_detail.info_center'.tr(),
         'icon': Icons.info,
         'color': AppColors.warning,
-        'description': 'Pusat informasi dan bantuan pengunjung',
+        'description': 'facilities_detail.info_center_desc'.tr(),
         'locations': ['Pintu Masuk Utama', 'Counter Tiket']
       },
     ];
@@ -77,9 +78,9 @@ class FacilitiesScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
-          'Fasilitas Borobudur',
-          style: TextStyle(
+        title: Text(
+          'facilities_detail.facilities_title'.tr(),
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.black,
@@ -118,9 +119,9 @@ class FacilitiesScreen extends StatelessWidget {
                     size: 48,
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Fasilitas Lengkap untuk Kenyamanan Anda',
-                    style: TextStyle(
+                  Text(
+                    'facilities_detail.header_title'.tr(),
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -129,7 +130,7 @@ class FacilitiesScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Nikmati berbagai fasilitas modern yang tersedia di kawasan Candi Borobudur',
+                    'facilities_detail.header_subtitle'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.white.withOpacity(0.9),
@@ -181,9 +182,9 @@ class FacilitiesScreen extends StatelessWidget {
                         size: 24,
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        'Informasi Penting',
-                        style: TextStyle(
+                      Text(
+                        'facilities_detail.important_info'.tr(),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.blue,
@@ -192,13 +193,13 @@ class FacilitiesScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    '• Semua fasilitas buka dari jam 06:00 - 17:00 WIB\n'
-                    '• Fasilitas toilet dan mushola tersedia gratis\n'
-                    '• Wifi gratis dengan SSID: Borobudur_Free_WiFi\n'
-                    '• Untuk bantuan, hubungi Information Center\n'
-                    '• Harap menjaga kebersihan dan kelestarian lingkungan',
-                    style: TextStyle(
+                  Text(
+                    '${'facilities_detail.info_hours'.tr()}\n'
+                    '${'facilities_detail.info_free'.tr()}\n'
+                    '${'facilities_detail.info_wifi'.tr()}\n'
+                    '${'facilities_detail.info_help'.tr()}\n'
+                    '${'facilities_detail.info_environment'.tr()}',
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Colors.black87,
                       height: 1.5,
@@ -283,7 +284,7 @@ class FacilitiesScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Lokasi:',
+                            'facilities_detail.location_label'.tr(),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,

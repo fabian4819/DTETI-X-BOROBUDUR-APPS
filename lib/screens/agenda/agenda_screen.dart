@@ -33,7 +33,7 @@ class AgendaScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -44,7 +44,7 @@ class AgendaScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      'Kalender Acara',
+                      'agenda_detail.event_calendar'.tr(),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -58,8 +58,8 @@ class AgendaScreen extends StatelessWidget {
             
             const SizedBox(height: 30),
             
-            const Text(
-              'Acara Mendatang',
+            Text(
+              'agenda_detail.upcoming_events'.tr(),
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -189,8 +189,8 @@ class AgendaScreen extends StatelessWidget {
                               color: AppColors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text(
-                              'Segera',
+                            child: Text(
+                              'agenda_detail.event_soon'.tr(),
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,

@@ -59,7 +59,7 @@ class NewsScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Positioned(
+                    Positioned(
                       bottom: 20,
                       left: 20,
                       right: 20,
@@ -67,7 +67,7 @@ class NewsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Penemuan Baru di Kompleks Borobudur',
+                            'news_detail.featured_news'.tr(),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -76,7 +76,7 @@ class NewsScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Tim arkeolog menemukan struktur baru yang menambah misteri...',
+                            'news_detail.featured_desc'.tr(),
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.white,
@@ -144,16 +144,16 @@ class NewsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Berita Borobudur ${index + 1}',
-                              style: const TextStyle(
+                              '${'news_detail.news_title'.tr()} ${index + 1}',
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.darkGray,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Deskripsi singkat tentang berita ini yang memberikan informasi menarik...',
+                            Text(
+                              'news_detail.news_description'.tr(),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.mediumGray,
@@ -162,8 +162,8 @@ class NewsScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '${index + 1} hari yang lalu',
-                              style: const TextStyle(
+                              'news_detail.days_ago'.tr(args: [(index + 1).toString()]),
+                              style: TextStyle(
                                 fontSize: 10,
                                 color: AppColors.mediumGray,
                               ),

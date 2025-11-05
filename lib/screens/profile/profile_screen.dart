@@ -100,7 +100,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       return Column(
                         children: [
                           Text(
-                            user?.name ?? 'Loading...',
+                            user?.name ?? 'common.loading'.tr(),
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -123,19 +123,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildStatItem('12', 'Kunjungan'),
+                      _buildStatItem('12', 'profile_detail.visits'.tr()),
                       Container(
                         width: 1,
                         height: 40,
                         color: AppColors.lightGray,
                       ),
-                      _buildStatItem('5', 'Favorit'),
+                      _buildStatItem('5', 'profile_detail.favorites'.tr()),
                       Container(
                         width: 1,
                         height: 40,
                         color: AppColors.lightGray,
                       ),
-                      _buildStatItem('8', 'Review'),
+                      _buildStatItem('8', 'profile_detail.reviews'.tr()),
                     ],
                   ),
                 ],
@@ -161,8 +161,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   _buildMenuItem(
                     icon: Icons.history,
-                    title: 'Riwayat Kunjungan',
-                    subtitle: 'Lihat tempat yang pernah dikunjungi',
+                    title: 'profile_detail.visit_history_title'.tr(),
+                    subtitle: 'profile_detail.visit_history_subtitle'.tr(),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -175,8 +175,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.favorite,
-                    title: 'Tempat Favorit',
-                    subtitle: 'Daftar tempat yang disimpan',
+                    title: 'profile_detail.favorite_places_title'.tr(),
+                    subtitle: 'profile_detail.favorite_places_subtitle'.tr(),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -189,12 +189,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.rate_review,
-                    title: 'Review & Rating',
-                    subtitle: 'Ulasan yang pernah diberikan',
+                    title: 'profile_detail.review_rating'.tr(),
+                    subtitle: 'profile_detail.review_subtitle'.tr(),
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Fitur review akan segera hadir!'),
+                        SnackBar(
+                          content: Text('profile_detail.feature_coming_soon'.tr().replaceAll('{}', 'review')),
                           backgroundColor: Colors.blue,
                         ),
                       );
@@ -203,12 +203,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.download,
-                    title: 'Unduhan',
-                    subtitle: 'File dan konten yang diunduh',
+                    title: 'profile_detail.downloads'.tr(),
+                    subtitle: 'profile_detail.downloads_subtitle'.tr(),
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Belum ada file yang diunduh'),
+                        SnackBar(
+                          content: Text('profile_detail.no_downloads'.tr()),
                           backgroundColor: AppColors.warning,
                         ),
                       );
@@ -237,8 +237,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   _buildMenuItem(
                     icon: Icons.notifications,
-                    title: 'Notifikasi',
-                    subtitle: 'Atur preferensi notifikasi',
+                    title: 'profile_detail.notifications_title'.tr(),
+                    subtitle: 'profile_detail.notifications_subtitle'.tr(),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -251,8 +251,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.language,
-                    title: 'Bahasa',
-                    subtitle: 'Indonesia',
+                    title: 'profile_detail.language_title'.tr(),
+                    subtitle: 'profile_detail.language_current'.tr(),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -265,8 +265,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.privacy_tip,
-                    title: 'Privasi & Keamanan',
-                    subtitle: 'Kelola data dan keamanan akun',
+                    title: 'profile_detail.privacy_title'.tr(),
+                    subtitle: 'profile_detail.privacy_subtitle'.tr(),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -279,8 +279,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildDivider(),
                   _buildMenuItem(
                     icon: Icons.help,
-                    title: 'Bantuan & Dukungan',
-                    subtitle: 'FAQ dan hubungi support',
+                    title: 'profile_detail.help_title'.tr(),
+                    subtitle: 'profile_detail.help_subtitle'.tr(),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -371,10 +371,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             
             const SizedBox(height: 20),
-            
+
             Text(
-              'Versi 1.0.0',
-              style: TextStyle(
+              '${'common.version'.tr()} 1.0.0',
+              style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.mediumGray,
               ),

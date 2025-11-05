@@ -19,8 +19,8 @@ class FavoritesScreen extends StatelessWidget {
           IconButton(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Fitur edit akan segera hadir!'),
+                SnackBar(
+                  content: Text('profile_detail.edit_coming_soon'.tr()),
                   backgroundColor: Colors.blue,
                 ),
               );
@@ -65,12 +65,12 @@ class FavoritesScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '5 Tempat Favorit',
+                          'favorites_detail.total_favorites'.tr(args: ['5']),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -79,7 +79,7 @@ class FavoritesScreen extends StatelessWidget {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Tempat yang telah Anda simpan',
+                          'favorites_detail.saved_places'.tr(),
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.mediumGray,
@@ -94,8 +94,8 @@ class FavoritesScreen extends StatelessWidget {
             
             const SizedBox(height: 30),
             
-            const Text(
-              'Daftar Favorit',
+            Text(
+              'favorites_detail.favorite_list'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -161,7 +161,7 @@ class FavoritesScreen extends StatelessWidget {
                                   onTap: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('${favorite['name']} dihapus dari favorit'),
+                                        content: Text('favorites_detail.removed_from_favorites'.tr(args: [favorite['name']])),
                                         backgroundColor: AppColors.error,
                                       ),
                                     );
@@ -253,7 +253,7 @@ class FavoritesScreen extends StatelessWidget {
     return [
       {
         'name': 'Candi Borobudur',
-        'description': 'Candi Buddha terbesar di dunia',
+        'description': 'favorites_detail.temple_main'.tr(),
         'rating': '4.8',
         'icon': Icons.temple_buddhist,
         'gradient': const LinearGradient(
@@ -262,7 +262,7 @@ class FavoritesScreen extends StatelessWidget {
       },
       {
         'name': 'Museum Borobudur',
-        'description': 'Koleksi artefak bersejarah',
+        'description': 'favorites_detail.museum'.tr(),
         'rating': '4.5',
         'icon': Icons.museum,
         'gradient': const LinearGradient(
@@ -271,7 +271,7 @@ class FavoritesScreen extends StatelessWidget {
       },
       {
         'name': 'Taman Lumbini',
-        'description': 'Taman untuk meditasi',
+        'description': 'favorites_detail.lumbini_park'.tr(),
         'rating': '4.6',
         'icon': Icons.park,
         'gradient': const LinearGradient(
@@ -280,7 +280,7 @@ class FavoritesScreen extends StatelessWidget {
       },
       {
         'name': 'Candi Mendut',
-        'description': 'Candi Buddha bersejarah',
+        'description': 'favorites_detail.mendut_temple'.tr(),
         'rating': '4.4',
         'icon': Icons.account_balance,
         'gradient': const LinearGradient(
@@ -289,7 +289,7 @@ class FavoritesScreen extends StatelessWidget {
       },
       {
         'name': 'Candi Pawon',
-        'description': 'Candi transit menuju Borobudur',
+        'description': 'favorites_detail.pawon_temple'.tr(),
         'rating': '4.2',
         'icon': Icons.foundation,
         'gradient': const LinearGradient(

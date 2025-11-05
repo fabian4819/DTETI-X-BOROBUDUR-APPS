@@ -38,21 +38,21 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Selamat Datang,',
+            Text(
+              'borobudurpedia_detail.welcome'.tr(),
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppColors.darkGray,
               ),
             ),
-            const Text(
-              'Apa yang ingin kamu pelajari?',
+            Text(
+              'borobudurpedia_detail.what_to_learn'.tr(),
               style: TextStyle(fontSize: 16, color: AppColors.mediumGray),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Lihat apa yang ada di sekitar kamu',
+            Text(
+              'borobudurpedia_detail.look_around'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -137,8 +137,8 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${category.count} Ensiklopedia',
-                  style: const TextStyle(
+                  'borobudurpedia_detail.encyclopedia_count'.tr(args: [category.count.toString()]),
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.mediumGray,
                   ),
@@ -154,8 +154,8 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'Pelajari',
+                    child: Text(
+                      'borobudurpedia_detail.learn_button'.tr(),
                       style: TextStyle(fontSize: 12, color: Colors.white),
                     ),
                   ),
@@ -184,8 +184,8 @@ class BorobudurpediaCategoriesScreen extends StatelessWidget {
       // Handle navigation error gracefully
       debugPrint('Error navigating to article: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gagal membuka artikel. Silakan coba lagi.'),
+        SnackBar(
+          content: Text('borobudurpedia_detail.failed_to_open'.tr()),
           backgroundColor: AppColors.error,
         ),
       );

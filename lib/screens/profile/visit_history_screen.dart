@@ -36,7 +36,7 @@ class VisitHistoryScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Column(
+              child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -53,7 +53,7 @@ class VisitHistoryScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Total Kunjungan',
+                            'visit_history_detail.total_visits'.tr(),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.white70,
@@ -73,7 +73,7 @@ class VisitHistoryScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Bulan Ini',
+                            'visit_history_detail.this_month'.tr(),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.white70,
@@ -93,7 +93,7 @@ class VisitHistoryScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Jam Total',
+                            'visit_history_detail.total_hours'.tr(),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.white70,
@@ -109,8 +109,8 @@ class VisitHistoryScreen extends StatelessWidget {
             
             const SizedBox(height: 30),
             
-            const Text(
-              'Kunjungan Terakhir',
+            Text(
+              'visit_history_detail.recent_visits'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -175,8 +175,8 @@ class VisitHistoryScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${visit['duration']} • ${visit['activities']} aktivitas',
-                            style: const TextStyle(
+                            '${visit['duration']} • ${visit['activities']} ${'common.activities'.tr()}',
+                            style: TextStyle(
                               fontSize: 12,
                               color: AppColors.mediumGray,
                             ),
@@ -215,41 +215,41 @@ class VisitHistoryScreen extends StatelessWidget {
   List<Map<String, dynamic>> _getVisitHistory() {
     return [
       {
-        'location': 'Candi Borobudur Utama',
+        'location': 'visit_history_detail.temple_main_name'.tr(),
         'date': '15 Januari 2025',
-        'duration': '3 jam',
+        'duration': '3 ${'visit_history_detail.hours'.tr()}',
         'activities': 5,
         'icon': Icons.temple_buddhist,
         'color': AppColors.primary,
       },
       {
-        'location': 'Museum Borobudur',
+        'location': 'visit_history_detail.museum_name'.tr(),
         'date': '12 Januari 2025',
-        'duration': '2 jam',
+        'duration': '2 ${'visit_history_detail.hours'.tr()}',
         'activities': 3,
         'icon': Icons.museum,
         'color': AppColors.accent,
       },
       {
-        'location': 'Taman Lumbini',
+        'location': 'visit_history_detail.lumbini_park_name'.tr(),
         'date': '8 Januari 2025',
-        'duration': '1.5 jam',
+        'duration': '1.5 ${'visit_history_detail.hours'.tr()}',
         'activities': 2,
         'icon': Icons.park,
         'color': AppColors.success,
       },
       {
-        'location': 'Candi Mendut',
+        'location': 'visit_history_detail.mendut_temple_name'.tr(),
         'date': '5 Januari 2025',
-        'duration': '1 jam',
+        'duration': '1 ${'visit_history_detail.hours'.tr()}',
         'activities': 2,
         'icon': Icons.account_balance,
         'color': AppColors.secondary,
       },
       {
-        'location': 'Candi Pawon',
+        'location': 'visit_history_detail.pawon_temple_name'.tr(),
         'date': '2 Januari 2025',
-        'duration': '45 menit',
+        'duration': '45 ${'visit_history_detail.minutes'.tr()}',
         'activities': 1,
         'icon': Icons.foundation,
         'color': AppColors.warning,

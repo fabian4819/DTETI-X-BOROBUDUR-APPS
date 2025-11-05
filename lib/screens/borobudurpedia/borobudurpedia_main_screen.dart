@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'borobudurpedia_categories_screen.dart';
 import 'article_details_screen.dart';
 import '../../utils/app_colors.dart';
@@ -32,9 +33,9 @@ Widget build(BuildContext context) {
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Borobudurpedia',
+                          'borobudurpedia.title'.tr(),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 20,
@@ -50,8 +51,8 @@ Widget build(BuildContext context) {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Borobudur Pedia',
+                  Text(
+                    'borobudurpedia.title'.tr(),
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -60,11 +61,11 @@ Widget build(BuildContext context) {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'MCB Warisan Dunia Borobudur, Direktorat Jenderal\nKebudayaan, Kementrian Pendidikan, Kebudayaan,\nRiset, dan Teknologi',
+                    'borobudurpedia_detail.subtitle'.tr(),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       height: 1.4,
                     ),
                   ),
@@ -75,9 +76,9 @@ Widget build(BuildContext context) {
                     //   color: Colors.white,
                     //   borderRadius: BorderRadius.circular(25),
                     // ),
-                    child: const TextField(
+                    child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Cari di sini',
+                        hintText: 'borobudurpedia.search_placeholder'.tr(),
                         border: InputBorder.none,
                         prefixIcon: Icon(Icons.search, color: AppColors.mediumGray),
                         contentPadding: EdgeInsets.symmetric(vertical: 16),
@@ -95,10 +96,10 @@ Widget build(BuildContext context) {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 children: [
-                  Expanded(child: _buildStatItem('0', 'Ensiklopedia')),
-                  Expanded(child: _buildStatItem('0', 'Ebook')),
-                  Expanded(child: _buildStatItem('0', 'Video')),
-                  Expanded(child: _buildStatItem('0', 'Gallery')),
+                  Expanded(child: _buildStatItem('0', 'borobudurpedia_detail.stats_encyclopedia'.tr())),
+                  Expanded(child: _buildStatItem('0', 'borobudurpedia_detail.stats_ebook'.tr())),
+                  Expanded(child: _buildStatItem('0', 'borobudurpedia_detail.stats_video'.tr())),
+                  Expanded(child: _buildStatItem('0', 'borobudurpedia_detail.stats_gallery'.tr())),
                 ],
               ),
             ),
@@ -114,8 +115,8 @@ Widget build(BuildContext context) {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Popular Categories',
+                      Text(
+                        'borobudurpedia_detail.popular_categories'.tr(),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -138,8 +139,8 @@ Widget build(BuildContext context) {
                       ),
                     ],
                   ),
-                  const Text(
-                    'Berbagai kategori dari koleksi yang ada',
+                  Text(
+                    'borobudurpedia_detail.categories_subtitle'.tr(),
                     style: TextStyle(
                       color: AppColors.mediumGray,
                     ),
@@ -148,15 +149,15 @@ Widget build(BuildContext context) {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildCategoryCard(context, 'Alat', '155 Ensiklopedia'),
+                        child: _buildCategoryCard(context, 'borobudurpedia_detail.category_alat'.tr(), 'borobudurpedia_detail.encyclopedia_count'.tr(args: ['155'])),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildCategoryCard(context, 'Bahan', '87 Ensiklopedia'),
+                        child: _buildCategoryCard(context, 'borobudurpedia_detail.category_bahan'.tr(), 'borobudurpedia_detail.encyclopedia_count'.tr(args: ['87'])),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildCategoryCard(context, 'Buddha', '87 Ensiklopedia'),
+                        child: _buildCategoryCard(context, 'borobudurpedia_detail.category_buddha'.tr(), 'borobudurpedia_detail.encyclopedia_count'.tr(args: ['87'])),
                       ),
                     ],
                   ),
@@ -172,16 +173,16 @@ Widget build(BuildContext context) {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Popular Link',
+                  Text(
+                    'borobudurpedia_detail.popular_link'.tr(),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.darkGray,
                     ),
                   ),
-                  const Text(
-                    'Jelajahi berbagai sumber, kenali Borobudur lebih lanjut',
+                  Text(
+                    'borobudurpedia_detail.popular_link_subtitle'.tr(),
                     style: TextStyle(
                       color: AppColors.mediumGray,
                     ),
@@ -189,14 +190,14 @@ Widget build(BuildContext context) {
                   const SizedBox(height: 16),
                   _buildPopularLinkItem(
                     context,
-                    'Ensiklopedia',
-                    'Kumpulan kata yang berkaitan dengan Candi Borobudur, Candi Mendut dan Candi Pawon',
+                    'borobudurpedia_detail.encyclopedia_title'.tr(),
+                    'borobudurpedia_detail.encyclopedia_desc'.tr(),
                   ),
                   const SizedBox(height: 12),
                   _buildPopularLinkItem(
                     context,
-                    'Sikawa',
-                    'Aplikasi pemetaan kawasan Candi Borobudur secara daring',
+                    'borobudurpedia_detail.sikawa_title'.tr(),
+                    'borobudurpedia_detail.sikawa_desc'.tr(),
                   ),
                 ],
               ),

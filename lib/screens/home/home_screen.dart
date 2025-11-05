@@ -149,7 +149,7 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: _buildQuickAccessItem(
                             icon: Icons.menu_book,
-                            label: 'Borobudurpedia',
+                            label: 'borobudurpedia.title'.tr(),
                             color: AppColors.accent,
                             onTap: () {
                               Navigator.push(
@@ -386,7 +386,7 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Agenda terbaru Borobudur',
+                      'home.latest_agenda'.tr(),
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -395,7 +395,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Jangan sampai terlewat',
+                      'home.dont_miss'.tr(),
                       style: const TextStyle(color: AppColors.mediumGray),
                     ),
                     const SizedBox(height: 16),
@@ -440,7 +440,7 @@ class HomeScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const Positioned(
+                            Positioned(
                               bottom: 20,
                               left: 20,
                               right: 20,
@@ -448,16 +448,16 @@ class HomeScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Perayaan Waisak di Borobudur 2025',
+                                    'home.vesak_celebration'.tr(),
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
                                     ),
                                   ),
-                                  SizedBox(height: 4),
+                                  const SizedBox(height: 4),
                                   Text(
-                                    '9 Mei 2025',
+                                    'home.vesak_date'.tr(),
                                     style: const TextStyle(
                                       fontSize: 14,
                                       color: Colors.white,
@@ -485,32 +485,32 @@ class HomeScreen extends StatelessWidget {
   List<Map<String, dynamic>> _getFacilities() {
     return [
       {
-        'name': 'Museum Borobudur',
-        'description': 'Koleksi artefak & sejarah',
+        'name': 'home.museum_borobudur'.tr(),
+        'description': 'home.museum_desc'.tr(),
         'icon': Icons.museum,
         'gradient': const LinearGradient(
           colors: [Color(0xFF6B73FF), Color(0xFF000DFF)],
         ),
       },
       {
-        'name': 'Parkir Kendaraan',
-        'description': 'Area parkir yang luas',
+        'name': 'home.parking'.tr(),
+        'description': 'home.parking_desc'.tr(),
         'icon': Icons.local_parking,
         'gradient': const LinearGradient(
           colors: [Color(0xFF00C9FF), Color(0xFF92FE9D)],
         ),
       },
       {
-        'name': 'Pusat Informasi',
-        'description': 'Bantuan & panduan wisata',
+        'name': 'home.info_center'.tr(),
+        'description': 'home.info_center_desc'.tr(),
         'icon': Icons.info,
         'gradient': const LinearGradient(
           colors: [Color(0xFFFC466B), Color(0xFF3F5EFB)],
         ),
       },
       {
-        'name': 'Area Makan',
-        'description': 'Resto & makanan tradisional',
+        'name': 'home.dining_area'.tr(),
+        'description': 'home.dining_desc'.tr(),
         'icon': Icons.restaurant,
         'gradient': const LinearGradient(
           colors: [Color(0xFFFFCE00), Color(0xFFFE4B36)],
