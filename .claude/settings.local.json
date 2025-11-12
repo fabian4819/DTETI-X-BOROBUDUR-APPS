@@ -15,7 +15,11 @@
       "Bash(done)",
       "Bash(lib/screens/home/home_screen.dart)",
       "Bash(flutter clean:*)",
-      "Bash(flutter build:*)"
+      "Bash(flutter build:*)",
+      "Bash(flutter doctor:*)",
+      "Bash(flutter devices:*)",
+      "Bash(flutter emulators:*)",
+      "Bash(pod install:*)"
     ],
     "deny": [],
     "ask": []
