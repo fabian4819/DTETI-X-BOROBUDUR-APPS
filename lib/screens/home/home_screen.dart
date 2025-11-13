@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../borobudurpedia/borobudurpedia_main_screen.dart';
-import '../navigation/api_map_navigation_screen.dart';
-import '../borobudurpedia/borobudurpedia_categories_screen.dart';
-import '../agenda/agenda_screen.dart';
 import '../facilities/facilities_screen.dart';
-import '../profile/profile_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.onNavigateToTab});
+
+  final Function(int)? onNavigateToTab;
 
   @override
   Widget build(BuildContext context) {
@@ -120,12 +118,7 @@ class HomeScreen extends StatelessWidget {
                             label: 'navigation.explore'.tr(),
                             color: AppColors.primary,
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ApiMapNavigationScreen(),
-                                ),
-                              );
+                              onNavigateToTab?.call(1); // Navigate to tab index 1 (Navigation)
                             },
                           ),
                         ),
@@ -136,12 +129,7 @@ class HomeScreen extends StatelessWidget {
                             label: 'navigation.news'.tr(),
                             color: AppColors.secondary,
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const BorobudurpediaCategoriesScreen(),
-                                ),
-                              );
+                              onNavigateToTab?.call(2); // Navigate to tab index 2 (Borobudurpedia)
                             },
                           ),
                         ),
@@ -152,6 +140,7 @@ class HomeScreen extends StatelessWidget {
                             label: 'borobudurpedia.title'.tr(),
                             color: AppColors.accent,
                             onTap: () {
+                              // For Borobudurpedia main screen, we still use Navigator.push since it's not a tab
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -175,12 +164,7 @@ class HomeScreen extends StatelessWidget {
                             label: 'navigation.agenda'.tr(),
                             color: AppColors.warning,
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const AgendaScreen(),
-                                ),
-                              );
+                              onNavigateToTab?.call(3); // Navigate to tab index 3 (Agenda)
                             },
                           ),
                         ),
@@ -191,6 +175,7 @@ class HomeScreen extends StatelessWidget {
                             label: 'facilities.title'.tr(),
                             color: AppColors.success,
                             onTap: () {
+                              // For Facilities screen, we still use Navigator.push since it's not a tab
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -207,12 +192,7 @@ class HomeScreen extends StatelessWidget {
                             label: 'navigation.profile'.tr(),
                             color: AppColors.error,
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ProfileScreen(),
-                                ),
-                              );
+                              onNavigateToTab?.call(4); // Navigate to tab index 4 (Profile)
                             },
                           ),
                         ),

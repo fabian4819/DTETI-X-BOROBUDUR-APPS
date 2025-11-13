@@ -17,13 +17,23 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const ApiMapNavigationScreen(),
-    const BorobudurpediaCategoriesScreen(),
-    const AgendaScreen(),
-    const ProfileScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      HomeScreen(onNavigateToTab: (index) {
+        setState(() {
+          _currentIndex = index;
+        });
+      }),
+      const ApiMapNavigationScreen(),
+      const BorobudurpediaCategoriesScreen(),
+      const AgendaScreen(),
+      const ProfileScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
