@@ -7,6 +7,10 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../models/temple_node.dart';
 import '../../services/temple_navigation_service.dart';
+import '../../services/barometer_service.dart';
+import '../../services/level_detection_service.dart';
+import '../../widgets/temple_layer_3d_widget.dart';
+import 'level_config_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../config/map_config.dart';
 
@@ -17,10 +21,12 @@ class ApiMapNavigationScreen extends StatefulWidget {
   State<ApiMapNavigationScreen> createState() => _ApiMapNavigationScreenState();
 }
 
-class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen> 
+class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   final MapController _mapController = MapController();
   final TempleNavigationService _navigationService = TempleNavigationService();
+  final BarometerService _barometerService = BarometerService();
+  final LevelDetectionService _levelDetectionService = LevelDetectionService();
   final FlutterTts _flutterTts = FlutterTts();
   
   // Navigation states
@@ -50,7 +56,15 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   Position? _currentPosition;
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<NavigationUpdate>? _navigationSubscription;
-  
+
+  // Barometer and level detection
+  int _currentTempleLevel = 1;
+  double _currentAltitude = 0.0;
+  bool _is3DMode = false;
+  bool _isBarometerAvailable = false;
+  StreamSubscription<BarometerUpdate>? _barometerSubscription;
+  StreamSubscription<int>? _levelSubscription;
+
   // Animation
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -75,6 +89,7 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
     _initializeAnimations();
     _initializeVoiceGuidance();
     _initializeLocationTracking();
+    _initializeBarometerServices();
     _setupInitialMarkersAndPolylines();
   }
   
@@ -126,9 +141,13 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
     WidgetsBinding.instance.removeObserver(this);
     _positionSubscription?.cancel();
     _navigationSubscription?.cancel();
+    _barometerSubscription?.cancel();
+    _levelSubscription?.cancel();
     _pulseController.dispose();
     _flutterTts.stop();
     _navigationService.dispose();
+    _barometerService.dispose();
+    _levelDetectionService.dispose();
     super.dispose();
   }
   
@@ -140,6 +159,64 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
       } catch (e) {
         debugPrint('Voice guidance error: $e');
       }
+    }
+  }
+
+  Future<void> _initializeBarometerServices() async {
+    try {
+      // Initialize barometer service
+      final barometerInitialized = await _barometerService.initialize();
+      if (!barometerInitialized) {
+        print('Barometer service initialization failed');
+        return;
+      }
+
+      // Initialize level detection service
+      final levelDetectionInitialized = await _levelDetectionService.initialize();
+      if (!levelDetectionInitialized) {
+        print('Level detection service initialization failed');
+        return;
+      }
+
+      setState(() {
+        _isBarometerAvailable = true;
+      });
+
+      // Start level detection
+      await _levelDetectionService.startDetection();
+
+      // Listen to level changes
+      _levelSubscription = _levelDetectionService.levelStream.listen((level) {
+        if (mounted) {
+          setState(() {
+            _currentTempleLevel = level;
+          });
+
+          // Update markers to reflect new level
+          _setupMarkers();
+
+          // Speak level transition if navigating
+          if (isNavigating) {
+            _speakInstruction('Anda sekarang di lantai $level');
+          }
+        }
+      });
+
+      // Listen to barometer updates
+      _barometerSubscription = _barometerService.barometerStream.listen((update) {
+        if (mounted) {
+          setState(() {
+            _currentAltitude = update.relativeAltitude;
+          });
+        }
+      });
+
+      print('Barometer and level detection services initialized successfully');
+    } catch (e) {
+      print('Error initializing barometer services: $e');
+      setState(() {
+        _isBarometerAvailable = false;
+      });
     }
   }
 
@@ -206,24 +283,54 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   
   void _setupMarkers() {
     _markers.clear();
-    
+
     // Add temple node markers from API
     for (final node in _navigationService.nodes.values) {
       final nodeName = node.name.toLowerCase();
-      
+
       // Skip lantai nodes UNLESS they also contain tangga or stupa
-      if (nodeName.contains('lantai') && 
-          !nodeName.contains('tangga') && 
+      if (nodeName.contains('lantai') &&
+          !nodeName.contains('tangga') &&
           !nodeName.contains('stupa')) {
         continue;
       }
-      
+
+      // Level filtering for 3D mode - if not in 3D mode, show all markers
+      if (_is3DMode && _isBarometerAvailable) {
+        // In 3D mode, apply level-based filtering with current level highlighting
+        final nodeLevel = node.level;
+        final levelConfig = _levelDetectionService.getLevelConfig(nodeLevel);
+
+        // Always show markers, but let the 3D widget handle visibility/transparency
+        // We'll pass level information to the markers for 3D widget processing
+      }
+
       final isSelected = selectedNode?.id == node.id;
       final isDestination = destinationNode?.id == node.id;
       final isStart = startNode?.id == node.id;
       
       Color markerColor = _getNodeMarkerColor(node, isSelected, isDestination, isStart);
       double markerSize = (isDestination || isStart) ? 50 : 35;
+
+      // Apply 3D mode level-based visual modifications
+      if (_is3DMode && _isBarometerAvailable) {
+        final nodeLevel = node.level;
+        final levelConfig = _levelDetectionService.getLevelConfig(nodeLevel);
+
+        if (levelConfig != null) {
+          // Highlight current level
+          if (nodeLevel == _currentTempleLevel) {
+            markerSize *= 1.3; // Make current level markers larger
+            // Use level config color for current level
+            if (!isSelected && !isDestination && !isStart) {
+              markerColor = levelConfig.color;
+            }
+          } else {
+            // Make other levels smaller and more transparent
+            markerSize *= 0.7;
+          }
+        }
+      }
       
       _markers.add(
         Marker(
@@ -1411,6 +1518,78 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
           ),
         ),
         actions: [
+          // 3D Mode toggle (only if barometer is available)
+          if (_isBarometerAvailable)
+            IconButton(
+              icon: Icon(
+                _is3DMode ? Icons.view_in_ar : Icons.layers,
+                color: _is3DMode ? AppColors.primary : Colors.grey,
+              ),
+              onPressed: () {
+                setState(() {
+                  _is3DMode = !_is3DMode;
+                });
+                _setupMarkers(); // Refresh markers for new mode
+
+                if (_is3DMode) {
+                  _speakInstruction('Mode 3D lantai diaktifkan');
+                } else {
+                  _speakInstruction('Mode 3D lantai dinonaktifkan');
+                }
+              },
+              tooltip: _is3DMode ? 'Disable 3D Layer Mode' : 'Enable 3D Layer Mode',
+            ),
+
+          // Level configuration (only if barometer is available)
+          if (_isBarometerAvailable)
+            IconButton(
+              icon: Icon(
+                Icons.tune,
+                color: AppColors.accent,
+              ),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const LevelConfigScreen(),
+                  ),
+                );
+              },
+              tooltip: 'Configure Level Settings',
+            ),
+
+          // Current level indicator (only if barometer is available and 3D mode is on)
+          if (_isBarometerAvailable && _is3DMode)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'LANTAI',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  Text(
+                    '$_currentTempleLevel',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Voice guidance toggle
           IconButton(
             icon: Icon(
@@ -1549,11 +1728,98 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
                   ),
                   PolylineLayer(polylines: _polylines),
                   MarkerLayer(markers: _markers),
+
+                  // 3D Temple Layering (when enabled)
+                  if (_is3DMode && _isBarometerAvailable)
+                    TempleLayer3DWidget(
+                      markers: _markers,
+                      currentLevel: _currentTempleLevel,
+                      levelConfigs: _levelDetectionService.levelConfigs,
+                      onLevelSelected: (level) {
+                        // Manual level selection
+                        _levelDetectionService.setCurrentLevel(level);
+                        setState(() {
+                          _currentTempleLevel = level;
+                        });
+                        _setupMarkers();
+                      },
+                      showAllLevels: true,
+                      mapController: _mapController,
+                    ),
                 ],
               ),
             ),
           ),
-          
+
+          // Barometer status panel (when barometer is available)
+          if (_isBarometerAvailable && !_is3DMode)
+            Positioned(
+              top: 80,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.height,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Elevation: ${_currentAltitude.toStringAsFixed(1)}m',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          Text(
+                            'Level: Lantai $_currentTempleLevel',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Barometer Active',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // Navigation panel (when navigating)
           if (isNavigating && _currentNavigationUpdate != null)
             Positioned(

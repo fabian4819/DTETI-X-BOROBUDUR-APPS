@@ -6,6 +6,7 @@ class TempleNode {
   final double longitude;
   final String type;
   final String? description;
+  final double? altitude; // Altitude in meters above sea level
 
   TempleNode({
     required this.id,
@@ -14,13 +15,20 @@ class TempleNode {
     required this.longitude,
     required this.type,
     this.description,
+    this.altitude,
   });
 
   factory TempleNode.fromGraphFeature(dynamic feature) {
     final geometry = feature['geometry'];
     final properties = feature['properties'];
     final coordinates = geometry['coordinates'] as List;
-    
+
+    // Handle 2D [lon, lat] or 3D [lon, lat, altitude] coordinates
+    double? altitude;
+    if (coordinates.length >= 3) {
+      altitude = (coordinates[2] as num).toDouble();
+    }
+
     return TempleNode(
       id: properties['id'] as int,
       name: properties['name'] as String,
@@ -28,6 +36,7 @@ class TempleNode {
       longitude: coordinates[0].toDouble(),
       type: _determineNodeType(properties['name'] as String),
       description: properties['name'] as String,
+      altitude: altitude ?? properties['altitude']?.toDouble(),
     );
   }
 
@@ -35,7 +44,13 @@ class TempleNode {
     final geometry = feature.geometry;
     final properties = feature.properties;
     final coordinates = geometry.pointCoordinates!;
-    
+
+    // Handle 2D [lon, lat] or 3D [lon, lat, altitude] coordinates
+    double? altitude;
+    if (coordinates.length >= 3) {
+      altitude = coordinates[2];
+    }
+
     return TempleNode(
       id: properties.id!,
       name: properties.name ?? 'Unknown Node',
@@ -43,6 +58,7 @@ class TempleNode {
       longitude: coordinates[0],
       type: properties.type ?? 'NODE',
       description: properties.description ?? properties.name,
+      altitude: altitude ?? properties.altitude?.toDouble(),
     );
   }
 
@@ -55,16 +71,61 @@ class TempleNode {
   }
 
   int get level {
+    // Try to extract level from name first
     final levelMatch = RegExp(r'LANTAI(\d+)').firstMatch(name.toUpperCase());
     if (levelMatch != null) {
       return int.tryParse(levelMatch.group(1) ?? '1') ?? 1;
     }
-    if (name.toUpperCase().contains('STUPA')) return 9;
-    return 1;
+
+    // Check for stupa (typically on upper levels)
+    if (name.toUpperCase().contains('STUPA')) {
+      // Use altitude if available for more precise level detection
+      if (altitude != null) {
+        return _calculateLevelFromAltitude(altitude!);
+      }
+      return 9; // Default to top level for stupas
+    }
+
+    // Use altitude if available for precise level detection
+    if (altitude != null) {
+      return _calculateLevelFromAltitude(altitude!);
+    }
+
+    return 1; // Default to ground level
+  }
+
+  /// Calculate temple level from altitude (rough approximation for Borobudur)
+  int _calculateLevelFromAltitude(double altitude) {
+    // Borobudur temple approximate level heights
+    if (altitude < 15.0) return 1;  // Ground level
+    if (altitude < 25.0) return 2;
+    if (altitude < 35.0) return 3;
+    if (altitude < 45.0) return 4;
+    if (altitude < 55.0) return 5;
+    if (altitude < 65.0) return 6;
+    if (altitude < 75.0) return 7;
+    if (altitude < 85.0) return 8;
+    return 9; // Top level
+  }
+
+  /// Get estimated elevation from temple level
+  double? get estimatedElevation {
+    switch (level) {
+      case 1: return 7.5;   // Average of 0-15m
+      case 2: return 20.0;  // Average of 15-25m
+      case 3: return 30.0;  // Average of 25-35m
+      case 4: return 40.0;  // Average of 35-45m
+      case 5: return 50.0;  // Average of 45-55m
+      case 6: return 60.0;  // Average of 55-65m
+      case 7: return 70.0;  // Average of 65-75m
+      case 8: return 80.0;  // Average of 75-85m
+      case 9: return 92.5;  // Average of 85-100m
+      default: return null;
+    }
   }
 
   @override
-  String toString() => 'TempleNode(id: $id, name: $name, type: $type)';
+  String toString() => 'TempleNode(id: $id, name: $name, type: $type, level: $level, altitude: ${altitude?.toStringAsFixed(1) ?? 'null'})';
 }
 
 /// Direct representation of temple edges from API
@@ -122,6 +183,7 @@ class TempleFeature {
   final String? imageUrl;
   final double? rating;
   final double? distanceM;
+  final double? altitude; // Altitude in meters above sea level
 
   TempleFeature({
     required this.id,
@@ -133,13 +195,20 @@ class TempleFeature {
     this.imageUrl,
     this.rating,
     this.distanceM,
+    this.altitude,
   });
 
   factory TempleFeature.fromApiFeature(dynamic feature) {
     final geometry = feature.geometry;
     final properties = feature.properties;
     final coordinates = geometry.pointCoordinates!;
-    
+
+    // Handle 2D [lon, lat] or 3D [lon, lat, altitude] coordinates
+    double? altitude;
+    if (coordinates.length >= 3) {
+      altitude = coordinates[2];
+    }
+
     return TempleFeature(
       id: properties.id!,
       name: properties.name ?? 'Unknown Feature',
@@ -150,20 +219,66 @@ class TempleFeature {
       imageUrl: properties.imageUrl,
       rating: properties.rating,
       distanceM: properties.distanceM,
+      altitude: altitude ?? properties.altitude?.toDouble(),
     );
   }
 
   int get level {
+    // Try to extract level from name first
     final levelMatch = RegExp(r'LANTAI(\d+)').firstMatch(name.toUpperCase());
     if (levelMatch != null) {
       return int.tryParse(levelMatch.group(1) ?? '1') ?? 1;
     }
-    if (name.toUpperCase().contains('STUPA')) return 9;
-    return 1;
+
+    // Check for stupa (typically on upper levels)
+    if (name.toUpperCase().contains('STUPA')) {
+      // Use altitude if available for more precise level detection
+      if (altitude != null) {
+        return _calculateLevelFromAltitude(altitude!);
+      }
+      return 9; // Default to top level for stupas
+    }
+
+    // Use altitude if available for precise level detection
+    if (altitude != null) {
+      return _calculateLevelFromAltitude(altitude!);
+    }
+
+    return 1; // Default to ground level
+  }
+
+  /// Calculate temple level from altitude (rough approximation for Borobudur)
+  int _calculateLevelFromAltitude(double altitude) {
+    // Borobudur temple approximate level heights
+    if (altitude < 15.0) return 1;  // Ground level
+    if (altitude < 25.0) return 2;
+    if (altitude < 35.0) return 3;
+    if (altitude < 45.0) return 4;
+    if (altitude < 55.0) return 5;
+    if (altitude < 65.0) return 6;
+    if (altitude < 75.0) return 7;
+    if (altitude < 85.0) return 8;
+    return 9; // Top level
+  }
+
+  /// Get estimated elevation from temple level
+  double? get estimatedElevation {
+    switch (level) {
+      case 1: return 7.5;   // Average of 0-15m
+      case 2: return 20.0;  // Average of 15-25m
+      case 3: return 30.0;  // Average of 25-35m
+      case 4: return 40.0;  // Average of 35-45m
+      case 5: return 50.0;  // Average of 45-55m
+      case 6: return 60.0;  // Average of 55-65m
+      case 7: return 70.0;  // Average of 65-75m
+      case 8: return 80.0;  // Average of 75-85m
+      case 9: return 92.5;  // Average of 85-100m
+      default: return null;
+    }
   }
 
   @override
-  String toString() => 'TempleFeature(id: $id, name: $name, type: $type)';
+  String toString() => 'TempleFeature(id: $id, name: $name, type: $type, level: $level, altitude: ${altitude?.toStringAsFixed(1) ?? 'null'})';
 }
 
 /// Navigation route waypoint from API

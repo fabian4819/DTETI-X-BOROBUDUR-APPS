@@ -49,5 +49,9 @@
 	<string>This app needs location access to provide navigation features and show your current location on the map.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>This app needs background location access to provide turn-by-turn navigation and track your location during navigation.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>This app uses your location to provide accurate navigation and show your position on the temple map.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>This app uses motion sensors including the barometer to detect your current temple level and provide enhanced 3D navigation features.</string>
 </dict>
 </plist>

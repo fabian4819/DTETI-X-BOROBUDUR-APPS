@@ -517,12 +517,18 @@ class TempleNavigationService {
   }
 
   List<RouteWaypoint> _parseNavigationRoute(RouteData routeData) {
+    // Check if the route data contains an error
+    if (routeData.error != null) {
+      debugPrint('Route API returned error: ${routeData.error}');
+      return []; // Return empty list for error
+    }
+
     final waypoints = <RouteWaypoint>[];
 
     for (final feature in routeData.features) {
       if (feature.geometry.isLineString) {
         final coordinates = feature.geometry.lineCoordinates!;
-        
+
         // Convert LineString coordinates to waypoints
         for (int i = 0; i < coordinates.length; i++) {
           final coord = coordinates[i];
@@ -597,6 +603,14 @@ class TempleNavigationService {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('Location services are disabled.');
+        // Try to open location settings on iOS
+        try {
+          bool opened = await Geolocator.openLocationSettings();
+          debugPrint('Location settings opened: $opened');
+          // Don't wait, just return false and let user try again
+        } catch (e) {
+          debugPrint('Could not open location settings: $e');
+        }
         return false;
       }
 
@@ -618,7 +632,19 @@ class TempleNavigationService {
       
       if (permission.isGranted) {
         debugPrint('Location permission granted successfully');
-        return true;
+        // On iOS, verify we can actually get location
+        try {
+          Position testPosition = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.bestForNavigation,
+            timeLimit: const Duration(seconds: 10),
+          );
+          debugPrint('Location test successful: ${testPosition.latitude}, ${testPosition.longitude}');
+          debugPrint('Location accuracy: ${testPosition.accuracy}m');
+          return true;
+        } catch (e) {
+          debugPrint('Location test failed (permission granted but no location): $e');
+          return false;
+        }
       }
       
       debugPrint('Location permission denied');
@@ -650,9 +676,13 @@ class TempleNavigationService {
       }
     }
 
-    const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.best,
-      distanceFilter: 1,
+    // iOS-specific location settings for better GPS accuracy
+    final LocationSettings locationSettings = AppleSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      activityType: ActivityType.otherNavigation,
+      distanceFilter: 2,
+      pauseLocationUpdatesAutomatically: false,
+      showBackgroundLocationIndicator: true,
     );
 
     Geolocator.getPositionStream(locationSettings: locationSettings).listen(

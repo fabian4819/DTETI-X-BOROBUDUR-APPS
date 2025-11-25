@@ -97,6 +97,7 @@ class GraphProperties {
   final double? cost;
   final double? reverseCost;
   final double? distanceM;
+  final double? altitude;
 
   GraphProperties({
     this.id,
@@ -110,6 +111,7 @@ class GraphProperties {
     this.cost,
     this.reverseCost,
     this.distanceM,
+    this.altitude,
   });
 
   factory GraphProperties.fromJson(Map<String, dynamic> json) {
@@ -125,6 +127,7 @@ class GraphProperties {
       cost: json['cost']?.toDouble(),
       reverseCost: json['reverse_cost']?.toDouble(),
       distanceM: json['distance_m']?.toDouble(),
+      altitude: json['altitude']?.toDouble(),
     );
   }
 }
@@ -231,13 +234,24 @@ class RouteResponse {
 class RouteData {
   final String type;
   final List<RouteFeature> features;
+  final String? error;
 
   RouteData({
     required this.type,
     required this.features,
+    this.error,
   });
 
   factory RouteData.fromJson(Map<String, dynamic> json) {
+    // Check if this is an error response
+    if (json['error'] != null) {
+      return RouteData(
+        type: json['type'] ?? 'FeatureCollection',
+        features: [],
+        error: json['error'] as String?,
+      );
+    }
+
     return RouteData(
       type: json['type'] ?? 'FeatureCollection',
       features: (json['features'] as List<dynamic>? ?? [])

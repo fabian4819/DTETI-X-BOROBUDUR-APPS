@@ -19,7 +19,21 @@
       "Bash(flutter doctor:*)",
       "Bash(flutter devices:*)",
       "Bash(flutter emulators:*)",
-      "Bash(pod install:*)"
+      "Bash(pod install:*)",
+      "Bash(ping:*)",
+      "Bash(nmap:*)",
+      "Bash(adb:*)",
+      "Bash(/Users/fabian/Library/Android/sdk/platform-tools/adb:*)",
+      "Bash(~/.zshrc)",
+      "Bash(source:*)",
+      "WebFetch(domain:borobudurbackend.context.my.id)",
+      "Bash(curl:*)",
+      "Bash(flutter pub deps:*)",
+      "WebSearch",
+      "WebFetch(domain:pub.dev)",
+      "WebFetch(domain:docs.mapbox.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:unity.com)"
     ],
     "deny": [],
     "ask": []
