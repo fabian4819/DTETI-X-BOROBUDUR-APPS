@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'home/home_screen.dart';
-import 'navigation/api_map_navigation_screen.dart';
+import 'navigation/mapbox_3d_navigation_screen.dart';
 import 'borobudurpedia/borobudurpedia_categories_screen.dart';
 import 'agenda/agenda_screen.dart';
 import 'profile/profile_screen.dart';
@@ -28,7 +28,7 @@ class _MainNavigationState extends State<MainNavigation> {
           _currentIndex = index;
         });
       }),
-      const ApiMapNavigationScreen(),
+      const Mapbox3DNavigationScreen(),
       const BorobudurpediaCategoriesScreen(),
       const AgendaScreen(),
       const ProfileScreen(),
