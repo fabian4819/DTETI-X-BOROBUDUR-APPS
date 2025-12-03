@@ -1956,101 +1956,137 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
               ),
             ),
           
-          // Bottom control panel
-          Positioned(
-            bottom: 16,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Start location info
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 8),
+          // Bottom control panel - only show when destination is selected
+          if (destinationNode != null || destinationFeature != null)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 300),
+                offset: (destinationNode != null || destinationFeature != null) 
+                    ? Offset.zero 
+                    : const Offset(0, 1),
+                curve: Curves.easeInOut,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 300),
+                  opacity: (destinationNode != null || destinationFeature != null) ? 1.0 : 0.0,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          useCurrentLocation ? Icons.my_location : Icons.play_arrow,
-                          color: Colors.blue,
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, -2),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            useCurrentLocation 
-                                ? 'Start: Lokasi Saat Ini (GPS)'
-                                : 'Start: ${startNode?.name ?? startFeature?.name ?? "Belum dipilih"}',
-                            style: const TextStyle(fontWeight: FontWeight.w500),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Start location info
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
                           ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                useCurrentLocation ? Icons.my_location : Icons.play_arrow,
+                                color: Colors.blue,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  useCurrentLocation 
+                                      ? 'Start: Lokasi Saat Ini (GPS)'
+                                      : 'Start: ${startNode?.name ?? startFeature?.name ?? "Belum dipilih"}',
+                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Destination info with clear button
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.flag, color: Colors.red),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Tujuan: ${destinationNode?.name ?? destinationFeature?.name}',
+                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                              // Clear destination button
+                              InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    destinationNode = null;
+                                    destinationFeature = null;
+                                    _currentRoute.clear();
+                                    _setupMarkers();
+                                    _setupPolylines();
+                                  });
+                                  _showMessage('Tujuan dibatalkan', Colors.orange);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.red,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Action buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: isNavigating ? _stopNavigation : _startNavigation,
+                                icon: Icon(isNavigating ? Icons.stop : Icons.navigation),
+                                label: Text(isNavigating ? 'navigation_detail.stop_navigation'.tr() : 'navigation_detail.start_navigation'.tr()),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isNavigating ? Colors.red : AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  
-                  // Destination info
-                  if (destinationNode != null || destinationFeature != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.flag, color: Colors.red),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Tujuan: ${destinationNode?.name ?? destinationFeature?.name}',
-                              style: const TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  
-                  // Action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: isNavigating ? _stopNavigation : _startNavigation,
-                          icon: Icon(isNavigating ? Icons.stop : Icons.navigation),
-                          label: Text(isNavigating ? 'navigation_detail.stop_navigation'.tr() : 'navigation_detail.start_navigation'.tr()),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isNavigating ? Colors.red : AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
           
           // Loading overlay
           if (_showLoadingOverlay)
