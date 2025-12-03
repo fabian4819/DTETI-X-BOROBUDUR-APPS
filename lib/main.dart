@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'screens/splash_screen.dart';
 import 'utils/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
+
+  // Initialize Mapbox with access token
+  MapboxOptions.setAccessToken("pk.eyJ1IjoiZ2VudGlhd2FuIiwiYSI6ImNseDdoZjBsdDByYTUya3BtdmNmd25nMHQifQ.rLQeC_xQRZFBFKI_jzM69Q");
 
   runApp(
     EasyLocalization(

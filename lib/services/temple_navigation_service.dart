@@ -584,12 +584,16 @@ class TempleNavigationService {
       // Check if location service is enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
+        debugPrint('Location services are disabled');
         return false;
       }
 
-      // Check current permission status using permission_handler
-      PermissionStatus permission = await Permission.location.status;
-      return permission.isGranted;
+      // Use geolocator's checkPermission for better iOS support
+      LocationPermission permission = await Geolocator.checkPermission();
+      debugPrint('Current geolocator permission status: $permission');
+      
+      return permission == LocationPermission.whileInUse || 
+             permission == LocationPermission.always;
       
     } catch (e) {
       debugPrint('Error checking location permission: $e');
@@ -603,36 +607,36 @@ class TempleNavigationService {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('Location services are disabled.');
-        // Try to open location settings on iOS
+        // Try to open location settings
         try {
           bool opened = await Geolocator.openLocationSettings();
           debugPrint('Location settings opened: $opened');
-          // Don't wait, just return false and let user try again
         } catch (e) {
           debugPrint('Could not open location settings: $e');
         }
         return false;
       }
 
-      // Check current permission status using permission_handler
-      PermissionStatus permission = await Permission.location.status;
+      // Check current permission status using geolocator
+      LocationPermission permission = await Geolocator.checkPermission();
       debugPrint('Current location permission status: $permission');
       
-      if (permission.isDenied) {
-        // Request permission using permission_handler
+      if (permission == LocationPermission.denied) {
+        // Request permission
         debugPrint('Requesting location permission...');
-        permission = await Permission.location.request();
+        permission = await Geolocator.requestPermission();
         debugPrint('Permission request result: $permission');
       }
       
-      if (permission.isPermanentlyDenied) {
-        debugPrint('Location permission permanently denied - opening app settings');
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('Location permission permanently denied - user needs to enable in settings');
         return false;
       }
       
-      if (permission.isGranted) {
+      if (permission == LocationPermission.whileInUse || 
+          permission == LocationPermission.always) {
         debugPrint('Location permission granted successfully');
-        // On iOS, verify we can actually get location
+        // Test if we can actually get location
         try {
           Position testPosition = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.bestForNavigation,
@@ -643,7 +647,8 @@ class TempleNavigationService {
           return true;
         } catch (e) {
           debugPrint('Location test failed (permission granted but no location): $e');
-          return false;
+          // Still return true if permission is granted, location might be available later
+          return true;
         }
       }
       

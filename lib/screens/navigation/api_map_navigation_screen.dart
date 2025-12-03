@@ -9,7 +9,7 @@ import '../../models/temple_node.dart';
 import '../../services/temple_navigation_service.dart';
 import '../../services/barometer_service.dart';
 import '../../services/level_detection_service.dart';
-import '../../widgets/temple_layer_3d_widget.dart';
+import '../../widgets/hybrid_3d_controller.dart';
 import 'level_config_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../config/map_config.dart';
@@ -65,12 +65,15 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   StreamSubscription<BarometerUpdate>? _barometerSubscription;
   StreamSubscription<int>? _levelSubscription;
 
+  // Hybrid 3D Controller
+  bool _showHybrid3D = true;
+
   // Animation
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   
-  // Map settings - default to Satellite for better Borobudur visualization
-  String _currentTileLayer = MapConfig.isMapTilerConfigured ? 'MapTiler Satellite' : MapConfig.availableLayers.first;
+  // Map settings - default to OpenStreetMap for better compatibility
+  String _currentTileLayer = 'OpenStreetMap';
   static const double _initialZoom = MapConfig.defaultZoom;
   
   // Borobudur center coordinates
@@ -116,12 +119,17 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
   Future<void> _checkLocationPermissionStatus() async {
     // Only check permission status, don't request again
     final hasPermission = await _navigationService.hasLocationPermission();
-    // Update cache
-    _hasLocationPermission = hasPermission;
     
-    if (hasPermission && useCurrentLocation && mounted) {
-      // Re-initialize location tracking if permission is available
-      _initializeLocationTracking();
+    if (mounted) {
+      setState(() {
+        // Update cache
+        _hasLocationPermission = hasPermission;
+      });
+      
+      if (hasPermission && useCurrentLocation) {
+        // Re-initialize location tracking if permission is available
+        _initializeLocationTracking();
+      }
     }
   }
 
@@ -1522,22 +1530,22 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
           if (_isBarometerAvailable)
             IconButton(
               icon: Icon(
-                _is3DMode ? Icons.view_in_ar : Icons.layers,
-                color: _is3DMode ? AppColors.primary : Colors.grey,
+                _showHybrid3D ? Icons.view_in_ar : Icons.layers,
+                color: _showHybrid3D ? AppColors.primary : Colors.grey,
               ),
               onPressed: () {
                 setState(() {
-                  _is3DMode = !_is3DMode;
+                  _showHybrid3D = !_showHybrid3D;
                 });
                 _setupMarkers(); // Refresh markers for new mode
 
-                if (_is3DMode) {
-                  _speakInstruction('Mode 3D lantai diaktifkan');
+                if (_showHybrid3D) {
+                  _speakInstruction('Hybrid 3D mode diaktifkan');
                 } else {
-                  _speakInstruction('Mode 3D lantai dinonaktifkan');
+                  _speakInstruction('Hybrid 3D mode dinonaktifkan');
                 }
               },
-              tooltip: _is3DMode ? 'Disable 3D Layer Mode' : 'Enable 3D Layer Mode',
+              tooltip: _showHybrid3D ? 'Disable Hybrid 3D Mode' : 'Enable Hybrid 3D Mode',
             ),
 
           // Level configuration (only if barometer is available)
@@ -1711,43 +1719,41 @@ class _ApiMapNavigationScreenState extends State<ApiMapNavigationScreen>
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: _borobudurCenter,
-                  initialZoom: _initialZoom,
-                  minZoom: 10.0,
-                  maxZoom: 20.0,
-                  onTap: _onMapTapped,
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate: _getTileTemplate(),
-                    userAgentPackageName: MapConfig.userAgent,
-                    maxNativeZoom: 19,
-                  ),
-                  PolylineLayer(polylines: _polylines),
-                  MarkerLayer(markers: _markers),
-
-                  // 3D Temple Layering (when enabled)
-                  if (_is3DMode && _isBarometerAvailable)
-                    TempleLayer3DWidget(
-                      markers: _markers,
+              child: _showHybrid3D
+                  ? Hybrid3DController(
+                      templeNodes: _navigationService.nodes.values.toList(),
+                      templeFeatures: _navigationService.features,
                       currentLevel: _currentTempleLevel,
                       levelConfigs: _levelDetectionService.levelConfigs,
+                      onMapTap: (LatLng point) => _onMapTapped(const TapPosition(Offset.zero, Offset.zero), point),
                       onLevelSelected: (level) {
-                        // Manual level selection
                         _levelDetectionService.setCurrentLevel(level);
                         setState(() {
                           _currentTempleLevel = level;
                         });
                         _setupMarkers();
                       },
-                      showAllLevels: true,
                       mapController: _mapController,
+                    )
+                  : FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: _borobudurCenter,
+                        initialZoom: _initialZoom,
+                        minZoom: 10.0,
+                        maxZoom: 20.0,
+                        onTap: _onMapTapped,
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: _getTileTemplate(),
+                          userAgentPackageName: MapConfig.userAgent,
+                          maxNativeZoom: 19,
+                        ),
+                        PolylineLayer(polylines: _polylines),
+                        MarkerLayer(markers: _markers),
+                      ],
                     ),
-                ],
-              ),
             ),
           ),
 

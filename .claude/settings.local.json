@@ -33,7 +33,9 @@
       "WebFetch(domain:pub.dev)",
       "WebFetch(domain:docs.mapbox.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:unity.com)"
+      "WebFetch(domain:unity.com)",
+      "Bash(flutter pub add:*)",
+      "Bash(pod repo update:*)"
     ],
     "deny": [],
     "ask": []

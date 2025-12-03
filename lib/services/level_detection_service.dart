@@ -130,22 +130,16 @@ class LevelDetectionService {
   Future<void> _loadLevelConfigs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final configsJson = prefs.getStringList('temple_level_configs');
+      final hasConfig = prefs.getBool('has_custom_level_configs') ?? false;
 
-      if (configsJson != null && configsJson.isNotEmpty) {
-        _levelConfigs = configsJson
-            .map((json) => TempleLevelConfig.fromJson(
-                Map<String, dynamic>.from(Map.fromEntries(
-                    json.split(',').map((e) {
-                      final parts = e.split(':');
-                      return MapEntry(parts[0], parts[1]);
-                    })))))
-            .toList();
-      } else {
-        // Use default Borobudur temple configuration
-        _levelConfigs = _getDefaultBorobudurConfig();
-        await _saveLevelConfigs();
+      if (hasConfig) {
+        // For now, always use defaults to avoid parsing issues
+        // Custom config can be re-enabled later with proper JSON serialization
+        print('Custom configs found, but using defaults for stability');
       }
+
+      // Always use default Borobudur temple configuration
+      _levelConfigs = _getDefaultBorobudurConfig();
 
       // Sort by level
       _levelConfigs.sort((a, b) => a.level.compareTo(b.level));
