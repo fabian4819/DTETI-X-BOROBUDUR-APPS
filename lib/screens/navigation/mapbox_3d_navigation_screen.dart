@@ -11,6 +11,7 @@ import '../../services/temple_navigation_service.dart';
 import '../../services/barometer_service.dart';
 import '../../services/level_detection_service.dart';
 import '../../utils/app_colors.dart';
+import 'level_config_screen.dart';
 
 class Mapbox3DNavigationScreen extends StatefulWidget {
   const Mapbox3DNavigationScreen({Key? key}) : super(key: key);
@@ -295,14 +296,43 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       // Get level configurations
       final levels = _levelDetectionService.levelConfigs;
       
+      // Wait for nodes to be loaded
+      int retries = 0;
+      while (_navigationService.nodes.isEmpty && retries < 10) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        retries++;
+      }
+      
+      if (_navigationService.nodes.isEmpty) {
+        print('No nodes loaded, using default circular polygons');
+        await _addDefaultCircularLayers();
+        return;
+      }
+      
+      // Group nodes by level
+      final nodesByLevel = <int, List<TempleNode>>{};
+      for (final node in _navigationService.nodes.values) {
+        nodesByLevel.putIfAbsent(node.level, () => []).add(node);
+      }
+      
+      print('Nodes grouped by level: ${nodesByLevel.keys.toList()}');
+      
       for (final levelConfig in levels) {
-        // Create a circular polygon for each level
-        final levelPolygon = _createLevelPolygon(
-          borobudurLat,
-          borobudurLon,
-          levelConfig.level,
-          levels.length,
-        );
+        final levelNodes = nodesByLevel[levelConfig.level] ?? [];
+        
+        String levelPolygon;
+        if (levelNodes.length >= 3) {
+          // Create polygon from actual nodes at this level
+          levelPolygon = _createPolygonFromNodes(levelNodes, levelConfig.level);
+        } else {
+          // Fallback to circular polygon
+          levelPolygon = _createLevelPolygon(
+            borobudurLat,
+            borobudurLon,
+            levelConfig.level,
+            levels.length,
+          );
+        }
         
         // Add source for this level
         final sourceId = 'borobudur-level-${levelConfig.level}';
@@ -329,6 +359,82 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     } catch (e) {
       print('Error adding Borobudur 3D layers: $e');
     }
+  }
+
+  Future<void> _addDefaultCircularLayers() async {
+    final levels = _levelDetectionService.levelConfigs;
+    
+    for (final levelConfig in levels) {
+      final levelPolygon = _createLevelPolygon(
+        borobudurLat,
+        borobudurLon,
+        levelConfig.level,
+        levels.length,
+      );
+      
+      final sourceId = 'borobudur-level-${levelConfig.level}';
+      await _mapboxMap!.style.addSource(GeoJsonSource(
+        id: sourceId,
+        data: levelPolygon,
+      ));
+      
+      final layerId = 'borobudur-3d-${levelConfig.level}';
+      final colorInt = levelConfig.color.value & 0xFFFFFFFF;
+      
+      await _mapboxMap!.style.addLayer(FillExtrusionLayer(
+        id: layerId,
+        sourceId: sourceId,
+        fillExtrusionColor: colorInt,
+        fillExtrusionHeight: levelConfig.maxAltitude,
+        fillExtrusionBase: levelConfig.minAltitude,
+        fillExtrusionOpacity: _currentTempleLevel == levelConfig.level ? 1.0 : 0.7,
+      ));
+    }
+  }
+
+  String _createPolygonFromNodes(List<TempleNode> nodes, int level) {
+    // Create convex hull from nodes
+    final points = nodes.map((n) => [n.longitude, n.latitude]).toList();
+    
+    // Sort points to create a proper polygon (simple convex hull approximation)
+    final center = _calculateCenter(points);
+    points.sort((a, b) {
+      final angleA = math.atan2(a[1] - center[1], a[0] - center[0]);
+      final angleB = math.atan2(b[1] - center[1], b[0] - center[0]);
+      return angleA.compareTo(angleB);
+    });
+    
+    // Close the polygon
+    if (points.isNotEmpty) {
+      points.add(points.first);
+    }
+    
+    return '''
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [${points.map((p) => '[${p[0]}, ${p[1]}]').join(', ')}]
+      },
+      "properties": {
+        "level": $level
+      }
+    }
+    ''';
+  }
+
+  List<double> _calculateCenter(List<List<double>> points) {
+    if (points.isEmpty) return [0.0, 0.0];
+    
+    double sumLon = 0;
+    double sumLat = 0;
+    
+    for (final point in points) {
+      sumLon += point[0];
+      sumLat += point[1];
+    }
+    
+    return [sumLon / points.length, sumLat / points.length];
   }
 
   String _createLevelPolygon(double centerLat, double centerLon, int level, int totalLevels) {
@@ -365,7 +471,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
 
     try {
       final nodes = _navigationService.nodes.values.toList();
-      final annotations = <PointAnnotationOptions>[];
+      final annotations = <CircleAnnotationOptions>[];
       
       for (final node in nodes) {
         // Skip level-only nodes
@@ -376,20 +482,21 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           continue;
         }
         
-        final annotation = PointAnnotationOptions(
+        final annotation = CircleAnnotationOptions(
           geometry: Point(coordinates: Position(node.longitude, node.latitude)),
-          iconImage: _getNodeIconName(node.type),
-          iconSize: 1.0,
-          iconColor: _getNodeColor(node).value,
+          circleRadius: 8.0,
+          circleColor: _getNodeColor(node).value,
+          circleStrokeWidth: 2.0,
+          circleStrokeColor: Colors.white.value,
         );
         
         annotations.add(annotation);
       }
       
-      final manager = await _mapboxMap!.annotations.createPointAnnotationManager();
+      final manager = await _mapboxMap!.annotations.createCircleAnnotationManager();
       await manager.createMulti(annotations);
       
-      print('Added ${annotations.length} node markers');
+      print('Added ${annotations.length} node markers (circle annotations)');
     } catch (e) {
       print('Error adding node markers: $e');
     }
@@ -399,24 +506,39 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     if (_mapboxMap == null) return;
 
     try {
-      final features = _navigationService.features;
-      final annotations = <PointAnnotationOptions>[];
+      // Wait for features to be loaded from API
+      int retries = 0;
+      while (_navigationService.features.isEmpty && retries < 10) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        retries++;
+      }
       
-      for (final feature in features) {
-        final annotation = PointAnnotationOptions(
+      final features = _navigationService.features;
+      
+      if (features.isEmpty) {
+        print('No features loaded from API');
+        return;
+      }
+      
+      final annotations = <CircleAnnotationOptions>[];
+      
+      for (int i = 0; i < features.length; i++) {
+        final feature = features[i];
+        final annotation = CircleAnnotationOptions(
           geometry: Point(coordinates: Position(feature.longitude, feature.latitude)),
-          iconImage: 'marker',
-          iconSize: 1.0,
-          iconColor: Colors.orange.value,
+          circleRadius: 10.0,
+          circleColor: feature.type == 'stupa' ? Colors.blue.value : Colors.orange.value,
+          circleStrokeWidth: 2.0,
+          circleStrokeColor: Colors.white.value,
         );
         
         annotations.add(annotation);
       }
       
-      final manager = await _mapboxMap!.annotations.createPointAnnotationManager();
+      final manager = await _mapboxMap!.annotations.createCircleAnnotationManager();
       await manager.createMulti(annotations);
       
-      print('Added ${annotations.length} feature markers');
+      print('Added ${annotations.length} feature markers (${features.length} features loaded)');
     } catch (e) {
       print('Error adding feature markers: $e');
     }
@@ -471,17 +593,6 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       }
     } catch (e) {
       print('Error updating 3D extrusion: $e');
-    }
-  }
-
-  String _getNodeIconName(String type) {
-    switch (type.toUpperCase()) {
-      case 'STUPA':
-        return 'marker';
-      case 'GATE':
-        return 'marker';
-      default:
-        return 'marker';
     }
   }
 
@@ -568,6 +679,23 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           ),
         ),
         actions: [
+          // Level configuration
+          if (_isBarometerAvailable)
+            IconButton(
+              icon: Icon(
+                Icons.tune,
+                color: AppColors.accent,
+              ),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const LevelConfigScreen(),
+                  ),
+                );
+              },
+              tooltip: 'Configure Level Settings',
+            ),
+          
           // Voice toggle
           IconButton(
             icon: Icon(

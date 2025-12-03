@@ -286,8 +286,10 @@ class _LevelConfigScreenState extends State<LevelConfigScreen> {
             child: _buildLevelConfigurations(),
           ),
 
-          // Save button
-          _buildSaveButton(),
+          // Save button with SafeArea
+          SafeArea(
+            child: _buildSaveButton(),
+          ),
         ],
       ),
     );
@@ -604,6 +606,7 @@ class _LevelConfigScreenState extends State<LevelConfigScreen> {
 
   Widget _buildSaveButton() {
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.all(16),
       child: ElevatedButton.icon(
         onPressed: _saveConfiguration,
@@ -612,7 +615,8 @@ class _LevelConfigScreenState extends State<LevelConfigScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

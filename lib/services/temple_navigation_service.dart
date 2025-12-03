@@ -693,7 +693,10 @@ class TempleNavigationService {
     Geolocator.getPositionStream(locationSettings: locationSettings).listen(
       (Position position) {
         _currentPosition = position;
-        _positionStreamController?.add(position);
+        // Check if controller is still open before adding
+        if (_positionStreamController != null && !_positionStreamController!.isClosed) {
+          _positionStreamController!.add(position);
+        }
         
         if (_isNavigating) {
           _updateNavigation(position);
@@ -704,7 +707,9 @@ class TempleNavigationService {
     // Get initial position
     try {
       _currentPosition = await Geolocator.getCurrentPosition();
-      _positionStreamController?.add(_currentPosition!);
+      if (_positionStreamController != null && !_positionStreamController!.isClosed) {
+        _positionStreamController!.add(_currentPosition!);
+      }
     } catch (e) {
       debugPrint('Error getting initial position: $e');
     }
