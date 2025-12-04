@@ -121,39 +121,21 @@ class TempleNavigationService {
   // Load temple features
   Future<void> _loadTempleFeatures() async {
     try {
-      final newFeatures = <TempleFeature>[];
+      // Load all features
+      final allFeatures = await getTempleFeatures();
+      _features = allFeatures;
       
-      // Load different types of features
-      final stupas = await getTempleFeatures(type: 'stupa', limit: 100);
-      newFeatures.addAll(stupas);
-      
-      // Load other features if needed
-      final otherFeatures = await getTempleFeatures(limit: 200);
-      for (final feature in otherFeatures) {
-        if (!newFeatures.any((existing) => existing.id == feature.id)) {
-          newFeatures.add(feature);
-        }
-      }
-      
-      _features = newFeatures;
+      debugPrint('Loaded ${_features.length} temple features');
       
     } catch (e) {
       debugPrint('Failed to load temple features: $e');
     }
   }
 
-  // Get temple features with pagination - returns TempleFeature directly
-  Future<List<TempleFeature>> getTempleFeatures({
-    String? type,
-    int page = 1,
-    int limit = 50,
-  }) async {
+  // Get temple features - returns TempleFeature directly
+  Future<List<TempleFeature>> getTempleFeatures() async {
     try {
-      final featuresResponse = await _apiService.getTempleFeatures(
-        type: type,
-        page: page,
-        limit: limit,
-      );
+      final featuresResponse = await _apiService.getTempleFeatures();
       
       if (featuresResponse != null && featuresResponse.code == 200) {
         return _parseTempleFeatures(featuresResponse.data);

@@ -6,6 +6,10 @@ class MapConfig {
   
   static const String mapTilerApiKey = 'jc4j4uffD0fuzidaTZUi';
   
+  // Mapbox Access Token for Directions API
+  // You can get this from the Mapbox account used for mapbox_maps_flutter
+  static const String mapboxAccessToken = 'pk.eyJ1IjoiYmlhbmZobHMiLCJhIjoiY21pcjM0ejFjMDVlcjNocHhldGZrN2x2ZyJ9.Ktd4D_PJYZmYiyBApMCcuA';
+  
   // MapTiler OMT (OpenMapTiles) templates - supports 3D buildings and floor layers
   static const Map<String, String> tileTemplates = {
     'MapTiler OMT Basic': 'https://api.maptiler.com/maps/basic-v2/{z}/{x}/{y}.png?key=$mapTilerApiKey',

@@ -25,17 +25,8 @@ class ApiService {
   }
 
   // Graph endpoint - get nodes and edges for temple mapping
-  Future<GraphResponse?> getTempleGraph({
-    double minLon = 110.2,
-    double minLat = -7.61,
-    double maxLon = 110.21,
-    double maxLat = -7.60,
-  }) async {
-    final uri = Uri.parse('$_baseUrl/v1/temples/graph').replace(
-      queryParameters: {
-        'bbox': '$minLon,$minLat,$maxLon,$maxLat',
-      },
-    );
+  Future<GraphResponse?> getTempleGraph() async {
+    final uri = Uri.parse('$_baseUrl/v1/temples/graph');
 
     debugPrint('Fetching temple graph from: $uri');
     final client = _createHttpClient();
@@ -59,35 +50,23 @@ class ApiService {
     }
   }
 
-  // Features endpoint - get temple features with pagination
-  Future<FeaturesResponse?> getTempleFeatures({
-    String? type,
-    int page = 1,
-    int limit = 50,
-  }) async {
-    final queryParams = {
-      'page': page.toString(),
-      'limit': limit.toString(),
-    };
-    
-    if (type != null) {
-      queryParams['type'] = type;
-    }
+  // Features endpoint - get temple features
+  Future<FeaturesResponse?> getTempleFeatures() async {
+    final uri = Uri.parse('$_baseUrl/v1/temples/features');
 
-    final uri = Uri.parse('$_baseUrl/v1/temples/features').replace(
-      queryParameters: queryParams,
-    );
-
+    debugPrint('Fetching temple features from: $uri');
     final client = _createHttpClient();
     try {
       final response = await client
           .get(uri, headers: _getHeaders())
           .timeout(_timeout);
 
+      debugPrint('Features API response: ${response.statusCode}');
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         return FeaturesResponse.fromJson(jsonData);
       } else {
+        debugPrint('Features API error body: ${response.body}');
         throw ApiException('Failed to fetch temple features: ${response.statusCode}');
       }
     } catch (e) {
@@ -242,21 +221,11 @@ class ApiService {
   }
 
   // Cached version of graph fetch
-  Future<GraphResponse?> getTempleGraphCached({
-    double minLon = 110.2,
-    double minLat = -7.61,
-    double maxLon = 110.21,
-    double maxLat = -7.60,
-  }) {
-    final cacheKey = 'graph_$minLon' '_$minLat' '_$maxLon' '_$maxLat';
+  Future<GraphResponse?> getTempleGraphCached() {
+    const cacheKey = 'temple_graph';
     return _getCachedOrFetch(
       cacheKey,
-      () => getTempleGraph(
-        minLon: minLon,
-        minLat: minLat,
-        maxLon: maxLon,
-        maxLat: maxLat,
-      ),
+      () => getTempleGraph(),
       cacheDuration: const Duration(hours: 1),
     );
   }
