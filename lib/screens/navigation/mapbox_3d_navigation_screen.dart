@@ -379,7 +379,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           fillExtrusionColor: colorInt,
           fillExtrusionHeight: levelConfig.maxAltitude,
           fillExtrusionBase: levelConfig.minAltitude,
-          fillExtrusionOpacity: _currentTempleLevel == levelConfig.level ? 1.0 : 0.7,
+          fillExtrusionOpacity: 0.0, // DISABLED - buildings invisible for testing
         ));
       }
       
@@ -503,21 +503,21 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       // Group nodes by level for better organization
       final nodesByLevel = <int, List<TempleNode>>{};
       for (final node in nodes) {
-        // Skip level-only nodes
-        final nodeName = node.name.toLowerCase();
-        if (nodeName.contains('lantai') &&
-            !nodeName.contains('tangga') &&
-            !nodeName.contains('stupa')) {
-          continue;
+        // Filter: Only show nodes with "STUPA" or "TANGGA" in name
+        final nodeName = node.name.toUpperCase();
+        if (nodeName.contains('STUPA') || nodeName.contains('TANGGA')) {
+          nodesByLevel.putIfAbsent(node.level, () => []).add(node);
         }
-        
-        nodesByLevel.putIfAbsent(node.level, () => []).add(node);
       }
       
       int totalMarkers = 0;
       
       // Clear previous marker levels
       _levelsWithMarkers.clear();
+      
+      // DEBUG: Print total nodes and grouping
+      print('🔍 DEBUG: Total nodes loaded: ${nodes.length}');
+      print('🔍 DEBUG: Nodes by level: ${nodesByLevel.map((k, v) => MapEntry(k, v.length))}');
       
       // Add nodes as GeoJSON sources with circle layers per level
       for (final level in nodesByLevel.keys) {
@@ -526,9 +526,12 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         // Track this level has markers
         _levelsWithMarkers.add(level);
         
-        // Create GeoJSON features for this level
+        print('🔍 DEBUG: Processing level $level with ${levelNodes.length} nodes');
+        
+        // Create GeoJSON features for this level (2D mode - no altitude)
         final features = levelNodes.map((node) {
           final color = _getNodeColor(node);
+          
           return '''
           {
             "type": "Feature",
@@ -560,18 +563,23 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           id: sourceId,
           data: geojson,
         ));
+        print('✅ Added source: $sourceId');
         
-        // Add circle layer with smaller, cleaner circles
+        // Add circle layer for 2D markers with VIEWPORT alignment
         final layerId = 'nodes-circles-$level';
         await _mapboxMap!.style.addLayer(CircleLayer(
           id: layerId,
           sourceId: sourceId,
-          circleRadius: 4.0, // Smaller radius for cleaner look
-          circleColor: Colors.green.value, // Default color
-          circleStrokeWidth: 1.5,
+          circleRadius: 14.0, // Large for visibility
+          circleColor: Colors.green.value,
+          circleStrokeWidth: 5.0, // Thick stroke
           circleStrokeColor: Colors.white.value,
-          circleOpacity: 0.9,
+          circleOpacity: 1.0, // Full opacity
+          circlePitchAlignment: CirclePitchAlignment.VIEWPORT, // 2D mode
+          // Ensure circles are always on top
+          circleSortKey: 999.0, // Highest priority
         ));
+        print('✅ Added layer: $layerId for ${levelNodes.length} markers');
         
         totalMarkers += levelNodes.length;
       }
@@ -604,7 +612,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       final stupaFeatures = features.where((f) => f.type == 'stupa').toList();
       final otherFeatures = features.where((f) => f.type != 'stupa').toList();
       
-      // Add stupa features (blue)
+      // Add stupa features (blue) with moderate altitude
       if (stupaFeatures.isNotEmpty) {
         final stupaGeoJson = {
           'type': 'FeatureCollection',
@@ -613,7 +621,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
             'id': feature.id,
             'geometry': {
               'type': 'Point',
-              'coordinates': [feature.longitude, feature.latitude],
+              'coordinates': [feature.longitude, feature.latitude], // 2D coordinates
             },
             'properties': {
               'id': feature.id,
@@ -631,15 +639,17 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         await _mapboxMap!.style.addLayer(CircleLayer(
           id: 'features-stupa-circles',
           sourceId: 'features-stupa-source',
-          circleRadius: 10.0,
+          circleRadius: 18.0, // Largest for stupa visibility
           circleColor: Colors.blue.value,
-          circleStrokeWidth: 2.0,
+          circleStrokeWidth: 6.0, // Thickest stroke
           circleStrokeColor: Colors.white.value,
-          circleOpacity: 0.9,
+          circleOpacity: 1.0, // Full opacity
+          circlePitchAlignment: CirclePitchAlignment.VIEWPORT, // 2D mode
+          circleSortKey: 999.0, // Always on top
         ));
       }
       
-      // Add other features (orange)
+      // Add other features (orange) - 2D mode
       if (otherFeatures.isNotEmpty) {
         final otherGeoJson = {
           'type': 'FeatureCollection',
@@ -648,7 +658,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
             'id': feature.id,
             'geometry': {
               'type': 'Point',
-              'coordinates': [feature.longitude, feature.latitude],
+              'coordinates': [feature.longitude, feature.latitude], // 2D coordinates
             },
             'properties': {
               'id': feature.id,
@@ -666,11 +676,13 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         await _mapboxMap!.style.addLayer(CircleLayer(
           id: 'features-other-circles',
           sourceId: 'features-other-source',
-          circleRadius: 10.0,
+          circleRadius: 16.0, // Large for feature visibility
           circleColor: Colors.orange.value,
-          circleStrokeWidth: 2.0,
+          circleStrokeWidth: 6.0, // Thick stroke
           circleStrokeColor: Colors.white.value,
-          circleOpacity: 0.9,
+          circleOpacity: 1.0, // Full opacity
+          circlePitchAlignment: CirclePitchAlignment.VIEWPORT, // 2D mode
+          circleSortKey: 999.0, // Always on top
         ));
       }
       
@@ -1153,17 +1165,39 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     
     if (currentPos == null) return;
     
-    // Calculate straight-line distance (haversine formula)
-    final distance = _calculateDistance(
-      currentPos.latitude,
-      currentPos.longitude,
-      destLat,
-      destLon,
-    );
+    // Try to get route data from Borobudur API if destination is a node
+    Map<String, dynamic>? routeData;
+    if (destinationNode != null) {
+      routeData = await _fetchBorobudurRoute(
+        currentPos.latitude,
+        currentPos.longitude,
+        destinationNode!.id,
+      );
+    }
     
-    // Estimate walking time (average walking speed: 1.4 m/s or 5 km/h)
-    final walkingSpeedMps = 1.4; // meters per second
-    final durationSeconds = (distance / walkingSpeedMps).round();
+    double distance;
+    int durationSeconds;
+    
+    // Use Borobudur API data if available, otherwise calculate
+    if (routeData != null && routeData['properties'] != null) {
+      final props = routeData['properties'];
+      distance = (props['distance_m'] ?? 0).toDouble();
+      durationSeconds = (props['duration_s'] ?? 0).toInt();
+      print('Using Borobudur API metrics: ${distance}m, ${durationSeconds}s');
+    } else {
+      // Calculate straight-line distance (haversine formula)
+      distance = _calculateDistance(
+        currentPos.latitude,
+        currentPos.longitude,
+        destLat,
+        destLon,
+      );
+      
+      // Estimate walking time (average walking speed: 1.4 m/s or 5 km/h)
+      final walkingSpeedMps = 1.4; // meters per second
+      durationSeconds = (distance / walkingSpeedMps).round();
+      print('Using calculated metrics: ${distance}m, ${durationSeconds}s');
+    }
     
     setState(() {
       previewDistance = distance;
@@ -1171,12 +1205,13 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       showNavigationPreview = true;
     });
     
-    // Draw route line on map
+    // Draw route line on map (pass targetNode if destination is a node)
     await _drawRouteLine(
       currentPos.latitude,
       currentPos.longitude,
       destLat,
       destLon,
+      targetNode: destinationNode,
     );
     
     // Adjust camera to show entire route
@@ -1208,7 +1243,240 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     return degrees * math.pi / 180;
   }
 
-  // Fetch route from Mapbox Directions API
+  // Find nearest node from a given position
+  TempleNode? _findNearestNode(double lat, double lon, {int? preferredLevel}) {
+    if (_navigationService.nodes.isEmpty) {
+      print('No nodes available to find nearest');
+      return null;
+    }
+    
+    TempleNode? nearestNode;
+    double minDistance = double.infinity;
+    
+    // First try: find nearest node from preferred level if specified
+    if (preferredLevel != null) {
+      for (final node in _navigationService.nodes.values) {
+        if (node.level == preferredLevel) {
+          final distance = _calculateDistance(lat, lon, node.latitude, node.longitude);
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestNode = node;
+          }
+        }
+      }
+      
+      if (nearestNode != null) {
+        print('Nearest node (level $preferredLevel): ${nearestNode.name} (ID: ${nearestNode.id}) at ${minDistance.toStringAsFixed(2)}m away');
+        return nearestNode;
+      }
+    }
+    
+    // Second try: find any nearest node
+    minDistance = double.infinity;
+    for (final node in _navigationService.nodes.values) {
+      final distance = _calculateDistance(lat, lon, node.latitude, node.longitude);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestNode = node;
+      }
+    }
+    
+    if (nearestNode != null) {
+      print('Nearest node (any level): ${nearestNode.name} (ID: ${nearestNode.id}) at ${minDistance.toStringAsFixed(2)}m away');
+    }
+    
+    return nearestNode;
+  }
+
+  // Find multiple nearest nodes for fallback attempts
+  List<TempleNode> _findNearestNodes(double lat, double lon, {int count = 5, int? preferredLevel}) {
+    if (_navigationService.nodes.isEmpty) {
+      return [];
+    }
+    
+    // Calculate distances for all nodes, excluding TANGGA nodes (stairs are often isolated)
+    final nodesWithDistance = <MapEntry<TempleNode, double>>[];
+    
+    for (final node in _navigationService.nodes.values) {
+      // Skip TANGGA nodes as they might be isolated from the main graph
+      if (node.name.contains('TANGGA')) {
+        continue;
+      }
+      
+      final distance = _calculateDistance(lat, lon, node.latitude, node.longitude);
+      nodesWithDistance.add(MapEntry(node, distance));
+    }
+    
+    if (nodesWithDistance.isEmpty) {
+      print('⚠️ No non-TANGGA nodes found, trying all nodes including TANGGA');
+      // Fallback: include TANGGA nodes if no other nodes available
+      for (final node in _navigationService.nodes.values) {
+        final distance = _calculateDistance(lat, lon, node.latitude, node.longitude);
+        nodesWithDistance.add(MapEntry(node, distance));
+      }
+    }
+    
+    // Sort by distance
+    nodesWithDistance.sort((a, b) => a.value.compareTo(b.value));
+    
+    // Prefer nodes from the same level
+    if (preferredLevel != null) {
+      final sameLevelNodes = nodesWithDistance
+          .where((entry) => entry.key.level == preferredLevel)
+          .take(count)
+          .toList();
+      
+      if (sameLevelNodes.isNotEmpty) {
+        print('Found ${sameLevelNodes.length} nearest non-TANGGA nodes from level $preferredLevel');
+        return sameLevelNodes.map((e) => e.key).toList();
+      }
+    }
+    
+    // Return closest nodes regardless of level
+    print('Found ${nodesWithDistance.take(count).length} nearest non-TANGGA nodes');
+    return nodesWithDistance.take(count).map((e) => e.key).toList();
+  }
+
+  // Fetch route from Borobudur Backend API (for on-temple navigation)
+  // Now with smart snap-to-nearest-node feature
+  Future<Map<String, dynamic>?> _fetchBorobudurRoute(
+    double startLat, 
+    double startLon, 
+    int toNodeId,
+  ) async {
+    const baseUrl = 'https://borobudurbackend.context.my.id/v1/temples/navigation/route';
+    const profile = 'walking';
+
+    try {
+      // Get destination node info
+      final destinationNode = _navigationService.nodes[toNodeId];
+      final destinationLevel = destinationNode?.level;
+      final isDestinationTangga = destinationNode?.name.contains('TANGGA') ?? false;
+      
+      print('=== Borobudur Route Request ===');
+      print('From: ($startLat, $startLon)');
+      print('To: Node $toNodeId${destinationNode != null ? ' (${destinationNode.name}, Level $destinationLevel${isDestinationTangga ? ', TANGGA node' : ''})' : ''}');
+      
+      // If destination is TANGGA (isolated), skip snap-to-nearest and go straight to Mapbox
+      if (isDestinationTangga) {
+        print('⚠️ Destination is TANGGA node (likely isolated from graph)');
+        print('Skipping Borobudur API and using Mapbox Directions instead');
+        return null;
+      }
+
+      // Attempt 1: Try direct routing from position
+      var url = Uri.parse('$baseUrl?fromLat=$startLat&fromLon=$startLon&toNodeId=$toNodeId&profile=$profile');
+      print('\n--- Attempt 1: Direct routing ---');
+      print('URL: $url');
+      
+      var response = await http.get(url);
+      print('Status: ${response.statusCode}');
+      print('Body: ${response.body.substring(0, math.min(200, response.body.length))}...');
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'success' && data['data'] != null) {
+          // Check if data contains error (no path found)
+          if (data['data']['error'] != null) {
+            print('❌ Error: ${data['data']['error']}');
+          } else if (data['data']['features'] != null && 
+              (data['data']['features'] as List).isNotEmpty) {
+            print('✅ Direct route successful!');
+            final feature = data['data']['features'][0];
+            if (feature['properties'] != null) {
+              print('Distance: ${feature['properties']['distance_m']} m');
+              print('Duration: ${feature['properties']['duration_s']} s');
+            }
+            return feature;
+          }
+        }
+      }
+
+      // Attempt 2-6: Try multiple nearest nodes
+      print('\n--- Attempt 2-6: Routing via nearest nodes ---');
+      final nearestNodes = _findNearestNodes(startLat, startLon, count: 5, preferredLevel: destinationLevel);
+      
+      if (nearestNodes.isEmpty) {
+        print('❌ No nearest nodes found');
+        return null;
+      }
+      
+      print('Found ${nearestNodes.length} candidate nodes to try');
+      
+      for (int i = 0; i < nearestNodes.length; i++) {
+        final node = nearestNodes[i];
+        final distance = _calculateDistance(startLat, startLon, node.latitude, node.longitude);
+        
+        print('\n--- Attempt ${i + 2}: Via ${node.name} ---');
+        print('Node: ID ${node.id}, Level ${node.level}, ${distance.toStringAsFixed(2)}m away');
+        print('Coordinates: (${node.latitude}, ${node.longitude})');
+        
+        url = Uri.parse('$baseUrl?fromLat=${node.latitude}&fromLon=${node.longitude}&toNodeId=$toNodeId&profile=$profile');
+        print('URL: $url');
+        
+        response = await http.get(url);
+        print('Status: ${response.statusCode}');
+        print('Body: ${response.body.substring(0, math.min(200, response.body.length))}...');
+
+        if (response.statusCode == 200) {
+          final snapData = json.decode(response.body);
+          if (snapData['status'] == 'success' && 
+              snapData['data'] != null &&
+              snapData['data']['error'] == null &&
+              snapData['data']['features'] != null &&
+              (snapData['data']['features'] as List).isNotEmpty) {
+            
+            print('✅ Success! Route found via ${node.name}');
+            final feature = snapData['data']['features'][0];
+            
+            // Add start segment: user position → nearest node
+            final startSegmentDistance = distance;
+            
+            // Prepend coordinates from user position to nearest node
+            final originalCoords = feature['geometry']['coordinates'] as List;
+            final newCoords = [
+              [startLon, startLat], // User position first
+              ...originalCoords, // Then route from nearest node to destination
+            ];
+            
+            // Update geometry with new coordinates
+            feature['geometry']['coordinates'] = newCoords;
+            
+            // Update distance and duration
+            if (feature['properties'] != null) {
+              final originalDistance = (feature['properties']['distance_m'] ?? 0).toDouble();
+              final totalDistance = originalDistance + startSegmentDistance;
+              final originalDuration = (feature['properties']['duration_s'] ?? 0).toInt();
+              final walkingSpeed = 1.4; // m/s
+              final startSegmentDuration = (startSegmentDistance / walkingSpeed).round();
+              final totalDuration = originalDuration + startSegmentDuration;
+              
+              feature['properties']['distance_m'] = totalDistance;
+              feature['properties']['duration_s'] = totalDuration;
+              feature['properties']['snapped_to_node'] = node.name;
+              feature['properties']['snap_distance_m'] = startSegmentDistance;
+              
+              print('Total distance: ${totalDistance.toStringAsFixed(2)}m (snap: ${startSegmentDistance.toStringAsFixed(2)}m + route: ${originalDistance.toStringAsFixed(2)}m)');
+              print('Total duration: ${totalDuration}s');
+            }
+            
+            return feature;
+          } else {
+            print('❌ Error: ${snapData['data']?['error'] ?? 'No route found'}');
+            // Continue to next node
+          }
+        }
+      }
+
+      print('\n❌ All ${nearestNodes.length + 1} attempts failed');
+      return null;
+    } catch (e) {
+      print('💥 Exception: $e');
+      return null;
+    }
+  }
+
+  // Fetch route from Mapbox Directions API (for general navigation)
   Future<Map<String, dynamic>?> _fetchDirectionsRoute(
     double startLat, 
     double startLon, 
@@ -1232,7 +1500,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['routes'] != null && (data['routes'] as List).isNotEmpty) {
-          print('Route fetched successfully!');
+          print('Mapbox route fetched successfully!');
           return data['routes'][0];
         }
       } else {
@@ -1245,7 +1513,13 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   }
 
   // Draw route line on map with traffic styling
-  Future<void> _drawRouteLine(double startLat, double startLon, double endLat, double endLon) async {
+  Future<void> _drawRouteLine(
+    double startLat, 
+    double startLon, 
+    double endLat, 
+    double endLon, {
+    TempleNode? targetNode,
+  }) async {
     if (_mapboxMap == null) return;
     
     try {
@@ -1258,24 +1532,56 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         // Layer doesn't exist, ignore
       }
       
-      // Fetch route from Mapbox Directions API
-      final route = await _fetchDirectionsRoute(startLat, startLon, endLat, endLon);
+      Map<String, dynamic>? route;
+      String routeSource = 'unknown';
+      
+      // Try Borobudur Backend API first if destination is a Node
+      if (targetNode != null) {
+        print('Attempting to fetch route from Borobudur Backend (on-temple navigation)...');
+        final borobudurRoute = await _fetchBorobudurRoute(startLat, startLon, targetNode.id);
+        
+        if (borobudurRoute != null && borobudurRoute['geometry'] != null) {
+          route = borobudurRoute;
+          routeSource = 'Borobudur Backend';
+          
+          // Extract distance and duration from Borobudur API response
+          if (borobudurRoute['properties'] != null) {
+            final props = borobudurRoute['properties'];
+            if (props['distance_m'] != null) {
+              print('Borobudur API distance: ${props['distance_m']} m');
+            }
+            if (props['duration_s'] != null) {
+              print('Borobudur API duration: ${props['duration_s']} s');
+            }
+          }
+        }
+      }
+      
+      // Fallback to Mapbox Directions API if Borobudur API fails or not a node
+      if (route == null) {
+        print('Falling back to Mapbox Directions API...');
+        route = await _fetchDirectionsRoute(startLat, startLon, endLat, endLon);
+        if (route != null && route['geometry'] != null) {
+          routeSource = 'Mapbox Directions';
+        }
+      }
       
       Map<String, dynamic> routeGeoJson;
       
       if (route != null && route['geometry'] != null) {
-        // Use real route from Directions API
+        // Use real route from API
         routeGeoJson = {
           'type': 'Feature',
           'geometry': route['geometry'],
           'properties': {
             'route-color': '#3366FF', // Blue color for route
+            'route-source': routeSource,
           },
         };
-        print('Using Directions API route with ${route['geometry']['coordinates'].length} points');
+        print('Using $routeSource route with ${route['geometry']['coordinates'].length} points');
       } else {
-        // Fallback to straight line if API fails
-        print('Falling back to straight line route');
+        // Fallback to straight line if all APIs fail
+        print('All APIs failed - falling back to straight line route');
         routeGeoJson = {
           'type': 'Feature',
           'geometry': {
@@ -1287,6 +1593,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           },
           'properties': {
             'route-color': '#3366FF',
+            'route-source': 'Straight Line (Fallback)',
           },
         };
       }
@@ -1407,12 +1714,12 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         // Layer doesn't exist, ignore
       }
       
-      // Create GeoJSON point
+      // Create GeoJSON point (2D mode - no altitude)
       final markerGeoJson = {
         'type': 'Feature',
         'geometry': {
           'type': 'Point',
-          'coordinates': [lon, lat],
+          'coordinates': [lon, lat], // 2D coordinates
         },
         'properties': {},
       };
@@ -1423,15 +1730,17 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         data: json.encode(markerGeoJson),
       ));
       
-      // Add circle layer with green color
+      // Add circle layer (2D mode - VIEWPORT alignment)
       await _mapboxMap!.style.addLayer(CircleLayer(
         id: 'custom-location-layer',
         sourceId: 'custom-location-source',
-        circleRadius: 12.0,
+        circleRadius: 20.0, // Largest for custom location marker
         circleColor: Colors.green.value,
-        circleStrokeWidth: 3.0,
+        circleStrokeWidth: 7.0, // Thickest stroke for emphasis
         circleStrokeColor: Colors.white.value,
-        circleOpacity: 0.9,
+        circleOpacity: 1.0, // Full opacity
+        circlePitchAlignment: CirclePitchAlignment.VIEWPORT, // 2D mode
+        circleSortKey: 1000.0, // Highest priority, above all other markers
       ));
       
       print('Custom location marker added at: $lat, $lon');
