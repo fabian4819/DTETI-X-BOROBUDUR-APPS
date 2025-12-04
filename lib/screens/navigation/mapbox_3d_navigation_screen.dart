@@ -101,6 +101,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   double cameraPitch = 60.0; // 3D tilt angle
   double cameraZoom = 18.0;
   double cameraBearing = 0.0;
+  bool _show3DBuildings = true; // Toggle for 3D building visualization
 
   // Borobudur center coordinates
   static const double borobudurLat = -7.607874;
@@ -220,6 +221,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           // Update 3D extrusion and markers visibility based on level
           _update3DExtrusion();
           _updateMarkersVisibility();
+          
+          // NEW: Update 3D building visibility based on detected level
+          _update3DBuildingVisibility(level);
         }
       });
 
@@ -337,6 +341,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     try {
       // Add Borobudur temple 3D layers with extrusion based on level
       await _addBorobudur3DLayers();
+      
+      // Enable 3D building visualization based on barometer
+      await _enable3DBuildingVisualization();
       
       // Add point annotations for nodes and features
       await _addNodeMarkers();
@@ -602,6 +609,94 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       }
     }
     ''';
+  }
+
+  /// Update 3D building visibility based on detected level from barometer
+  /// Shows current level prominently, dims others for context
+  Future<void> _update3DBuildingVisibility(int detectedLevel) async {
+    if (_mapboxMap == null) return;
+
+    try {
+      final levels = _levelDetectionService.levelConfigs;
+      
+      print('🏗️ Updating 3D building visibility for level $detectedLevel');
+      
+      for (final levelConfig in levels) {
+        final layerId = 'borobudur-3d-${levelConfig.level}';
+        
+        // Calculate opacity based on level relationship
+        double opacity;
+        if (levelConfig.level == detectedLevel) {
+          // Current level: fully visible
+          opacity = 0.9;
+        } else if (levelConfig.level == detectedLevel - 1) {
+          // Level below: semi-transparent for context
+          opacity = 0.4;
+        } else if (levelConfig.level == detectedLevel + 1) {
+          // Level above: very transparent
+          opacity = 0.2;
+        } else {
+          // Other levels: nearly invisible
+          opacity = 0.1;
+        }
+        
+        // Update layer opacity
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty(
+            layerId,
+            'fill-extrusion-opacity',
+            opacity,
+          );
+          
+          print('  ✅ Level ${levelConfig.level} opacity: $opacity');
+        } catch (e) {
+          print('  ⚠️ Failed to update layer $layerId: $e');
+        }
+      }
+      
+      print('✅ 3D building visibility updated successfully');
+    } catch (e) {
+      print('❌ Error updating 3D building visibility: $e');
+    }
+  }
+
+  /// Enable 3D buildings visualization with altitude-based opacity
+  Future<void> _enable3DBuildingVisualization() async {
+    if (_mapboxMap == null) return;
+
+    try {
+      print('🏗️ Enabling 3D building visualization...');
+      
+      // Update visibility for current level
+      await _update3DBuildingVisibility(_currentTempleLevel);
+      
+      print('✅ 3D building visualization enabled');
+    } catch (e) {
+      print('❌ Error enabling 3D building visualization: $e');
+    }
+  }
+
+  /// Disable 3D buildings (set all to invisible)
+  Future<void> _disable3DBuildingVisualization() async {
+    if (_mapboxMap == null) return;
+
+    try {
+      final levels = _levelDetectionService.levelConfigs;
+      
+      for (final levelConfig in levels) {
+        final layerId = 'borobudur-3d-${levelConfig.level}';
+        
+        await _mapboxMap!.style.setStyleLayerProperty(
+          layerId,
+          'fill-extrusion-opacity',
+          0.0,
+        );
+      }
+      
+      print('✅ 3D building visualization disabled');
+    } catch (e) {
+      print('❌ Error disabling 3D building visualization: $e');
+    }
   }
 
   Future<void> _addNodeMarkers() async {
@@ -3028,6 +3123,27 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                 );
               },
               tooltip: 'Configure Level Settings',
+            ),
+          
+          // 3D Building visualization toggle
+          if (_isBarometerAvailable)
+            IconButton(
+              icon: Icon(
+                _show3DBuildings ? Icons.layers : Icons.layers_clear,
+                color: _show3DBuildings ? AppColors.primary : Colors.grey,
+              ),
+              onPressed: () {
+                setState(() {
+                  _show3DBuildings = !_show3DBuildings;
+                });
+                
+                if (_show3DBuildings) {
+                  _enable3DBuildingVisualization();
+                } else {
+                  _disable3DBuildingVisualization();
+                }
+              },
+              tooltip: _show3DBuildings ? 'Hide 3D Buildings' : 'Show 3D Buildings',
             ),
           
           // Voice toggle
