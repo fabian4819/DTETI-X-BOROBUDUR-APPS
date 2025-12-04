@@ -1471,8 +1471,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     if (_mapboxMap == null) return;
 
     try {
-      // Update camera to follow user
-      if (isNavigating) {
+      // Update camera to follow user ONLY if using current location mode
+      // If using custom location mode, don't auto-follow GPS
+      if (isNavigating && _locationMode == LocationMode.currentLocation) {
         await _mapboxMap!.flyTo(
           CameraOptions(
             center: Point(coordinates: Position(position.longitude, position.latitude)),
@@ -1605,7 +1606,41 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       isNavigating = true;
     });
 
+    // Move camera to starting location
+    await _moveCameraToStartLocation();
+
     _speakInstruction('Navigasi dimulai');
+  }
+
+  // Move camera to starting location (custom or current)
+  Future<void> _moveCameraToStartLocation() async {
+    if (_mapboxMap == null) return;
+
+    try {
+      geo.Position? startPos;
+      
+      // Determine starting position based on location mode
+      if (_locationMode == LocationMode.customLocation && _customStartLocation != null) {
+        startPos = _customStartLocation;
+      } else if (_currentPosition != null) {
+        startPos = _currentPosition;
+      }
+
+      if (startPos != null) {
+        await _mapboxMap!.flyTo(
+          CameraOptions(
+            center: Point(coordinates: Position(startPos.longitude, startPos.latitude)),
+            zoom: cameraZoom,
+            bearing: cameraBearing,
+            pitch: cameraPitch,
+          ),
+          MapAnimationOptions(duration: 1500, startDelay: 0),
+        );
+        print('Camera moved to start location: ${startPos.latitude}, ${startPos.longitude}');
+      }
+    } catch (e) {
+      print('Error moving camera to start location: $e');
+    }
   }
 
   void _stopNavigation() {
