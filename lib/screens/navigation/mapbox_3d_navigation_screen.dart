@@ -22,6 +22,12 @@ enum LocationMode {
   customLocation,
 }
 
+// Enum for map center mode
+enum MapCenterMode {
+  currentLocation, // Map centered on user's actual location
+  borobudurLocation, // Map centered on Borobudur temple
+}
+
 class Mapbox3DNavigationScreen extends StatefulWidget {
   const Mapbox3DNavigationScreen({Key? key}) : super(key: key);
 
@@ -58,6 +64,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   geo.Position? _customStartLocation;
   bool _isSelectingStartLocation = false;
   bool _showLocationModePanel = false;
+
+  // Map center mode
+  MapCenterMode _mapCenterMode = MapCenterMode.borobudurLocation;
 
   // Voice guidance
   bool _isVoiceEnabled = true;
@@ -314,6 +323,80 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       
     } catch (e) {
       print('Error setting up markers and layers: $e');
+    }
+  }
+
+  // Switch to Current Location mode
+  Future<void> _switchToCurrentLocationMode() async {
+    if (_mapboxMap == null) return;
+    
+    try {
+      // Get current user location
+      final hasPermission = await _navigationService.hasLocationPermission();
+      if (!hasPermission) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location permission required')),
+        );
+        setState(() {
+          _mapCenterMode = MapCenterMode.borobudurLocation;
+        });
+        return;
+      }
+
+      final position = await geo.Geolocator.getCurrentPosition();
+      
+      // Move camera to current location
+      await _mapboxMap!.flyTo(
+        CameraOptions(
+          center: Point(coordinates: Position(position.longitude, position.latitude)),
+          zoom: 15.0,
+          pitch: 45.0,
+          bearing: 0.0,
+        ),
+        MapAnimationOptions(duration: 2000, startDelay: 0),
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Mode: Current Location - Map mengikuti lokasi Anda'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      print('Error switching to current location mode: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get current location')),
+      );
+      setState(() {
+        _mapCenterMode = MapCenterMode.borobudurLocation;
+      });
+    }
+  }
+
+  // Switch to Borobudur mode
+  Future<void> _switchToBorobudurMode() async {
+    if (_mapboxMap == null) return;
+    
+    try {
+      // Move camera to Borobudur
+      await _mapboxMap!.flyTo(
+        CameraOptions(
+          center: Point(coordinates: Position(borobudurLon, borobudurLat)),
+          zoom: cameraZoom,
+          pitch: cameraPitch,
+          bearing: cameraBearing,
+        ),
+        MapAnimationOptions(duration: 2000, startDelay: 0),
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Mode: Borobudur - Map terpusat di Candi Borobudur'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      print('Error switching to Borobudur mode: $e');
     }
   }
 
@@ -2416,6 +2499,32 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           ),
         ),
         actions: [
+          // Map Center Mode toggle
+          IconButton(
+            icon: Icon(
+              _mapCenterMode == MapCenterMode.borobudurLocation 
+                  ? Icons.temple_buddhist 
+                  : Icons.location_on,
+              color: _mapCenterMode == MapCenterMode.borobudurLocation 
+                  ? AppColors.primary 
+                  : Colors.green,
+            ),
+            onPressed: () {
+              setState(() {
+                if (_mapCenterMode == MapCenterMode.borobudurLocation) {
+                  _mapCenterMode = MapCenterMode.currentLocation;
+                  _switchToCurrentLocationMode();
+                } else {
+                  _mapCenterMode = MapCenterMode.borobudurLocation;
+                  _switchToBorobudurMode();
+                }
+              });
+            },
+            tooltip: _mapCenterMode == MapCenterMode.borobudurLocation 
+                ? 'Mode: Borobudur (tap untuk Current Location)'
+                : 'Mode: Current Location (tap untuk Borobudur)',
+          ),
+          
           // Location mode toggle
           IconButton(
             icon: Icon(
