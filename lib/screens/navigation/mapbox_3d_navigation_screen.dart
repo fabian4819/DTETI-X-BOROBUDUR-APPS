@@ -14,6 +14,7 @@ import '../../services/barometer_service.dart';
 import '../../services/level_detection_service.dart';
 import '../../utils/app_colors.dart';
 import '../../config/map_config.dart';
+import '../../data/borobudur_facilities_data.dart';
 import 'level_config_screen.dart';
 
 // Enum for location mode
@@ -37,7 +38,9 @@ class Mapbox3DNavigationScreen extends StatefulWidget {
 
 class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  // Global key for MapWidget to prevent recreate error
+  // Global key for MapWidget to prevent recreate error on iOS
+  // ⚠️ IMPORTANT: Do NOT use Hot Restart (R) - use Hot Reload (r) or full restart
+  // Hot Restart will cause "recreating_view" error on iOS MapView
   final GlobalKey _mapKey = GlobalKey();
   
   MapboxMap? _mapboxMap;
@@ -276,6 +279,27 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     }
   }
 
+  /// Check if a point (lat, lon) is inside Borobudur temple complex
+  /// The complex boundaries are approximate based on the temple area
+  bool _isPointInsideBorobudurComplex(double lat, double lon) {
+    // Borobudur temple complex approximate boundaries
+    // These coordinates roughly define the area where vehicles cannot directly access
+    const double minLat = -7.6095; // Southern boundary
+    const double maxLat = -7.6070; // Northern boundary
+    const double minLon = 110.2020; // Western boundary
+    const double maxLon = 110.2045; // Eastern boundary
+    
+    final isInside = lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon;
+    
+    if (isInside) {
+      print('📍 Point ($lat, $lon) is INSIDE Borobudur complex');
+    } else {
+      print('📍 Point ($lat, $lon) is OUTSIDE Borobudur complex');
+    }
+    
+    return isInside;
+  }
+
   void _onMapCreated(MapboxMap mapboxMap) async {
     _mapboxMap = mapboxMap;
     
@@ -317,6 +341,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       // Add point annotations for nodes and features
       await _addNodeMarkers();
       await _addFeatureMarkers();
+      
+      // Add external facilities markers (outside temple)
+      await _addExternalFacilitiesMarkers();
       
       // Setup initial markers visibility based on current level
       await _updateMarkersVisibility();
@@ -775,6 +802,73 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     }
   }
 
+  Future<void> _addExternalFacilitiesMarkers() async {
+    if (_mapboxMap == null) return;
+
+    try {
+      // Get facilities data
+      final facilities = BorobudurFacilitiesData.getFacilities();
+      
+      // Group facilities by type for better organization
+      final facilitiesByType = <String, List<TempleFeature>>{};
+      for (final facility in facilities) {
+        facilitiesByType.putIfAbsent(facility.type, () => []).add(facility);
+      }
+      
+      print('🏢 Loading ${facilities.length} external facilities across ${facilitiesByType.keys.length} types');
+      
+      // Create GeoJSON for all facilities
+      final facilitiesGeoJson = {
+        'type': 'FeatureCollection',
+        'features': facilities.map((facility) => {
+          'type': 'Feature',
+          'id': facility.id,
+          'geometry': {
+            'type': 'Point',
+            'coordinates': [facility.longitude, facility.latitude],
+          },
+          'properties': {
+            'id': facility.id,
+            'name': facility.name,
+            'type': facility.type,
+            'description': facility.description ?? '',
+            'color': BorobudurFacilitiesData.getColorForType(facility.type),
+            'icon': BorobudurFacilitiesData.getIconForType(facility.type),
+          },
+        }).toList(),
+      };
+      
+      // Add source for facilities
+      await _mapboxMap!.style.addSource(GeoJsonSource(
+        id: 'external-facilities-source',
+        data: json.encode(facilitiesGeoJson),
+      ));
+      
+      // Add circle layer for facilities with purple color (distinct from nodes)
+      await _mapboxMap!.style.addLayer(CircleLayer(
+        id: 'external-facilities-circles',
+        sourceId: 'external-facilities-source',
+        circleRadius: 12.0, // Medium size for visibility
+        circleColor: 0xFFFF5722, // Deep Orange - distinct from other markers
+        circleStrokeWidth: 4.0,
+        circleStrokeColor: Colors.white.value,
+        circleOpacity: 1.0,
+        circlePitchAlignment: CirclePitchAlignment.VIEWPORT,
+        circleSortKey: 998.0, // Below nodes but above other elements
+      ));
+      
+      print('✅ Added ${facilities.length} external facility markers');
+      
+      // Log facilities by type
+      facilitiesByType.forEach((type, list) {
+        print('   - $type: ${list.length} locations');
+      });
+      
+    } catch (e) {
+      print('Error adding external facilities markers: $e');
+    }
+  }
+
   void _setupMapInteractions() {
     if (_mapboxMap == null) return;
 
@@ -824,11 +918,12 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       print('Screen coordinate: x=${screenCoord.x}, y=${screenCoord.y}');
       
       // Query features at the exact screen coordinate
-      // Include both node layers and feature layers
+      // Include node layers, feature layers, and external facilities
       final layerIds = [
         ..._levelsWithMarkers.map((level) => 'nodes-circles-$level'),
         'features-stupa-circles',
         'features-other-circles',
+        'external-facilities-circles', // Add external facilities layer
       ];
       print('Querying layers: $layerIds');
       
@@ -858,8 +953,30 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
             final type = properties['type'];
             
             if (id != null) {
-              // Check source or type to determine if it's a feature or node
+              // Check source or type to determine if it's a feature, node, or external facility
               print('Checking: source=$source, type=$type');
+              
+              // Check if it's an external facility
+              if (source == 'external-facilities-source') {
+                print('Determined as EXTERNAL FACILITY marker');
+                // Find facility in dummy data
+                final facilities = BorobudurFacilitiesData.getFacilities();
+                final facility = facilities.firstWhere(
+                  (f) => f.id == id,
+                  orElse: () => TempleFeature(
+                    id: id,
+                    name: properties['name'] ?? 'Unknown Facility',
+                    type: properties['type'] ?? 'facility',
+                    latitude: 0,
+                    longitude: 0,
+                    description: properties['description'],
+                  ),
+                );
+                print('Opening bottom sheet for facility: ${facility.name} (ID: $id)');
+                _showFacilityInfoBottomSheet(facility);
+                return;
+              }
+              
               print('Is feature source? ${source == 'features-stupa-source' || source == 'features-other-source'}');
               print('Type check: type != NODE? ${type != null && type != 'NODE'}');
               
@@ -1150,6 +1267,196 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Close button
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        'Tutup',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Show facility info bottom sheet (for external facilities like toilet, museum, etc)
+  void _showFacilityInfoBottomSheet(TempleFeature facility) {
+    final icon = BorobudurFacilitiesData.getIconForType(facility.type);
+    final colorInt = BorobudurFacilitiesData.getColorForType(facility.type);
+    final color = Color(colorInt);
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Facility icon and name
+                  Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            icon,
+                            style: const TextStyle(fontSize: 28),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              facility.name,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                facility.type.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: color,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Facility info
+                  if (facility.description != null && facility.description!.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              facility.description!,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  
+                  _buildInfoRow(
+                    Icons.location_on,
+                    'Koordinat',
+                    '${facility.latitude.toStringAsFixed(6)}, ${facility.longitude.toStringAsFixed(6)}',
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Navigation button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _startNavigationToFeature(facility);
+                      },
+                      icon: const Icon(Icons.navigation, color: Colors.white),
+                      label: const Text(
+                        'Navigasi ke Fasilitas',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1611,6 +1918,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         await _mapboxMap!.style.removeStyleLayer('route-layer');
         await _mapboxMap!.style.removeStyleLayer('route-layer-casing');
         await _mapboxMap!.style.removeStyleSource('route-source');
+        // Also remove dashed segment if exists
+        await _mapboxMap!.style.removeStyleLayer('dashed-segment-layer');
+        await _mapboxMap!.style.removeStyleSource('dashed-segment-source');
       } catch (e) {
         // Layer doesn't exist, ignore
       }
@@ -1649,22 +1959,119 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         }
       }
       
+      // Check if destination is inside Borobudur complex
+      // If yes, and we got Mapbox route (not Borobudur route), we need hybrid routing:
+      // 1. Solid line following the road (from Mapbox)
+      // 2. Dashed line from road endpoint to actual destination
+      final isDestinationInsideBorobudur = _isPointInsideBorobudurComplex(endLat, endLon);
+      final needsHybridRoute = isDestinationInsideBorobudur && routeSource == 'Mapbox Directions';
+      
       Map<String, dynamic> routeGeoJson;
+      Map<String, dynamic>? dashedSegmentGeoJson;
+      bool isStraightLineFallback = false;
       
       if (route != null && route['geometry'] != null) {
-        // Use real route from API
-        routeGeoJson = {
-          'type': 'Feature',
-          'geometry': route['geometry'],
-          'properties': {
-            'route-color': '#3366FF', // Blue color for route
-            'route-source': routeSource,
-          },
-        };
-        print('Using $routeSource route with ${route['geometry']['coordinates'].length} points');
+        if (needsHybridRoute) {
+          // HYBRID ROUTE: Mapbox route + dashed line to destination
+          print('🔀 Creating HYBRID route:');
+          print('   1. Solid blue line following road (Mapbox)');
+          print('   2. Dashed red line from road end to destination inside complex');
+          
+          // Get the last coordinate from Mapbox route (end of the road)
+          final routeCoords = route['geometry']['coordinates'] as List;
+          final lastRoadPoint = routeCoords.last as List;
+          final lastRoadLon = lastRoadPoint[0];
+          final lastRoadLat = lastRoadPoint[1];
+          
+          print('   Road ends at: ($lastRoadLat, $lastRoadLon)');
+          print('   Destination: ($endLat, $endLon)');
+          
+          // Solid route from Mapbox (existing road)
+          routeGeoJson = {
+            'type': 'Feature',
+            'geometry': route['geometry'],
+            'properties': {
+              'route-color': '#3366FF', // Blue color for road route
+              'route-source': routeSource,
+            },
+          };
+          
+          // Dashed segment from road end to destination
+          dashedSegmentGeoJson = {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': [
+                [lastRoadLon, lastRoadLat], // From end of road
+                [endLon, endLat],            // To actual destination
+              ],
+            },
+            'properties': {
+              'route-color': '#FF6B6B', // Red color for off-road segment
+              'route-source': 'Walking Path (No Vehicle Access)',
+            },
+          };
+          
+          // Show notification
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.directions_walk, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Tujuan di dalam area candi. Ikuti jalan, lalu jalan kaki (garis putus-putus).',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange[700],
+              duration: Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.only(bottom: 100, left: 16, right: 16),
+            ),
+          );
+          
+        } else {
+          // Normal route - all solid line
+          routeGeoJson = {
+            'type': 'Feature',
+            'geometry': route['geometry'],
+            'properties': {
+              'route-color': '#3366FF', // Blue color for route
+              'route-source': routeSource,
+            },
+          };
+          print('Using $routeSource route with ${route['geometry']['coordinates'].length} points');
+        }
       } else {
-        // Fallback to straight line if all APIs fail
-        print('All APIs failed - falling back to straight line route');
+        // Complete API failure - straight line fallback
+        print('All APIs failed - falling back to dashed straight line route');
+        isStraightLineFallback = true;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Tidak ada jalan ditemukan. Menampilkan garis lurus ke tujuan.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange[700],
+            duration: Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(bottom: 100, left: 16, right: 16),
+          ),
+        );
+        
         routeGeoJson = {
           'type': 'Feature',
           'geometry': {
@@ -1675,7 +2082,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
             ],
           },
           'properties': {
-            'route-color': '#3366FF',
+            'route-color': '#FF6B6B', // Red color for fallback route
             'route-source': 'Straight Line (Fallback)',
           },
         };
@@ -1687,56 +2094,116 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         data: json.encode(routeGeoJson),
       ));
       
-      // Add casing layer (black border)
-      await _mapboxMap!.style.addLayer(LineLayer(
-        id: 'route-layer-casing',
-        sourceId: 'route-source',
-        lineColor: Colors.black.value,
-        lineWidthExpression: [
-          'interpolate',
-          ['exponential', 1.5],
-          ['zoom'],
-          12.0, 8.0,
-          14.0, 10.0,
-          16.0, 12.0,
-          18.0, 14.0,
-          20.0, 16.0,
-        ],
-        lineCap: LineCap.ROUND,
-        lineJoin: LineJoin.ROUND,
-      ));
-      
-      // Add main route layer with traffic-style colors
-      await _mapboxMap!.style.addLayer(LineLayer(
-        id: 'route-layer',
-        sourceId: 'route-source',
-        lineWidthExpression: [
-          'interpolate',
-          ['exponential', 1.5],
-          ['zoom'],
-          12.0, 5.0,
-          14.0, 6.0,
-          16.0, 7.0,
-          18.0, 8.0,
-          20.0, 10.0,
-        ],
-        lineColorExpression: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          10.0, 'rgb(51, 102, 255)', // Blue at low zoom
-          14.0, [
-            'coalesce',
-            ['get', 'route-color'],
-            'rgb(51, 102, 255)'
+      // Add casing layer (black border) - only for real routes
+      if (!isStraightLineFallback) {
+        await _mapboxMap!.style.addLayer(LineLayer(
+          id: 'route-layer-casing',
+          sourceId: 'route-source',
+          lineColor: Colors.black.value,
+          lineWidthExpression: [
+            'interpolate',
+            ['exponential', 1.5],
+            ['zoom'],
+            12.0, 8.0,
+            14.0, 10.0,
+            16.0, 12.0,
+            18.0, 14.0,
+            20.0, 16.0,
           ],
-        ],
-        lineCap: LineCap.ROUND,
-        lineJoin: LineJoin.ROUND,
-        lineOpacity: 0.9,
-      ));
+          lineCap: LineCap.ROUND,
+          lineJoin: LineJoin.ROUND,
+        ));
+      }
       
-      print('Route line drawn successfully with traffic styling');
+      // Add main route layer with traffic-style colors or dashed line for fallback
+      if (isStraightLineFallback) {
+        // Dashed line for fallback route (no road found)
+        await _mapboxMap!.style.addLayer(LineLayer(
+          id: 'route-layer',
+          sourceId: 'route-source',
+          lineWidthExpression: [
+            'interpolate',
+            ['exponential', 1.5],
+            ['zoom'],
+            12.0, 4.0,
+            14.0, 5.0,
+            16.0, 6.0,
+            18.0, 7.0,
+            20.0, 8.0,
+          ],
+          lineColor: 0xFFFF6B6B, // Red color for no-route fallback
+          lineCap: LineCap.ROUND,
+          lineJoin: LineJoin.ROUND,
+          lineOpacity: 0.8,
+          lineDasharray: [2.0, 2.0], // Dashed pattern: 2px line, 2px gap
+        ));
+        print('Route line drawn as DASHED (no road found - straight line fallback)');
+      } else {
+        // Solid line for real routes from API
+        await _mapboxMap!.style.addLayer(LineLayer(
+          id: 'route-layer',
+          sourceId: 'route-source',
+          lineWidthExpression: [
+            'interpolate',
+            ['exponential', 1.5],
+            ['zoom'],
+            12.0, 5.0,
+            14.0, 6.0,
+            16.0, 7.0,
+            18.0, 8.0,
+            20.0, 10.0,
+          ],
+          lineColorExpression: [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            10.0, 'rgb(51, 102, 255)', // Blue at low zoom
+            14.0, [
+              'coalesce',
+              ['get', 'route-color'],
+              'rgb(51, 102, 255)'
+            ],
+          ],
+          lineCap: LineCap.ROUND,
+          lineJoin: LineJoin.ROUND,
+          lineOpacity: 0.9,
+        ));
+        print('Route line drawn successfully with solid line (real route from API)');
+      }
+      
+      // Add dashed segment if hybrid route (road + walking path)
+      if (dashedSegmentGeoJson != null) {
+        print('Adding dashed segment for walking path inside complex...');
+        
+        // Add source for dashed segment
+        await _mapboxMap!.style.addSource(GeoJsonSource(
+          id: 'dashed-segment-source',
+          data: json.encode(dashedSegmentGeoJson),
+        ));
+        
+        // Add dashed line layer (no vehicle access)
+        await _mapboxMap!.style.addLayer(LineLayer(
+          id: 'dashed-segment-layer',
+          sourceId: 'dashed-segment-source',
+          lineWidthExpression: [
+            'interpolate',
+            ['exponential', 1.5],
+            ['zoom'],
+            12.0, 4.0,
+            14.0, 5.0,
+            16.0, 6.0,
+            18.0, 7.0,
+            20.0, 8.0,
+          ],
+          lineColor: 0xFFFF6B6B, // Red color for walking path
+          lineCap: LineCap.ROUND,
+          lineJoin: LineJoin.ROUND,
+          lineOpacity: 0.8,
+          lineDasharray: [2.0, 2.0], // Dashed pattern
+        ));
+        print('✅ Dashed segment drawn (walking path from road to destination)');
+      }
+      
     } catch (e) {
       print('Error drawing route line: $e');
     }
@@ -1854,6 +2321,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       await _mapboxMap!.style.removeStyleLayer('route-layer');
       await _mapboxMap!.style.removeStyleLayer('route-layer-casing');
       await _mapboxMap!.style.removeStyleSource('route-source');
+      // Also remove dashed segment if exists
+      await _mapboxMap!.style.removeStyleLayer('dashed-segment-layer');
+      await _mapboxMap!.style.removeStyleSource('dashed-segment-source');
     } catch (e) {
       // Layer doesn't exist, ignore
     }
