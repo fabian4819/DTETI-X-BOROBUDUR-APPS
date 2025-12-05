@@ -141,6 +141,11 @@ class BarometerService {
   /// Handle barometer sensor events
   void _handleBarometerEvent(FlutterBarometerEvent event) {
     try {
+      // Check if stream is closed before adding events
+      if (_barometerController.isClosed) {
+        return;
+      }
+      
       final pressure = event.pressure;
 
       // Add to readings buffer for smoothing

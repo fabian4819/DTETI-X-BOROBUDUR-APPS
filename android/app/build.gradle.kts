@@ -42,3 +42,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Force update Material Components to fix lStar attribute issue
+    implementation("com.google.android.material:material:1.11.0")
+}

@@ -699,6 +699,29 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     }
   }
 
+  /// Get icon name based on node name/type
+  String _getNodeIcon(TempleNode node) {
+    final name = node.name.toUpperCase();
+    
+    if (name.contains('STUPA')) {
+      return '🛕'; // Buddhist temple/stupa
+    } else if (name.contains('TANGGA')) {
+      return '🪜'; // Ladder/stairs
+    } else if (name.contains('PINTU') || name.contains('GATE')) {
+      return '🚪'; // Door/gate
+    } else if (name.contains('RELIEF')) {
+      return '🗿'; // Stone carving
+    } else if (name.contains('BUDDHA') || name.contains('PATUNG')) {
+      return '🧘'; // Buddha statue
+    } else if (name.contains('GALLERY') || name.contains('GALERI')) {
+      return '🖼️'; // Gallery/art
+    } else if (name.contains('TOWER') || name.contains('MENARA')) {
+      return '🗼'; // Tower
+    } else {
+      return '📍'; // Default location pin
+    }
+  }
+
   Future<void> _addNodeMarkers() async {
     if (_mapboxMap == null) return;
 
@@ -707,11 +730,27 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       
       // Group nodes by level for better organization
       final nodesByLevel = <int, List<TempleNode>>{};
+      int skippedCount = 0;
+      List<String> skippedNames = [];
+      List<String> acceptedNames = [];
+      
       for (final node in nodes) {
         // Filter: Only show nodes with "STUPA" or "TANGGA" in name
+        // Exclude generic names like "lantai1_12", "level_3", etc.
         final nodeName = node.name.toUpperCase();
-        if (nodeName.contains('STUPA') || nodeName.contains('TANGGA')) {
+        final hasStupa = nodeName.contains('STUPA');
+        final hasTangga = nodeName.contains('TANGGA');
+        
+        if (hasStupa || hasTangga) {
           nodesByLevel.putIfAbsent(node.level, () => []).add(node);
+          if (acceptedNames.length < 15) {
+            acceptedNames.add(node.name);
+          }
+        } else {
+          skippedCount++;
+          if (skippedNames.length < 10) {
+            skippedNames.add(node.name);
+          }
         }
       }
       
@@ -720,9 +759,14 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       // Clear previous marker levels
       _levelsWithMarkers.clear();
       
-      // DEBUG: Print total nodes and grouping
+      // DEBUG: Print total nodes and filtering results
       print('🔍 DEBUG: Total nodes loaded: ${nodes.length}');
-      print('🔍 DEBUG: Nodes by level: ${nodesByLevel.map((k, v) => MapEntry(k, v.length))}');
+      print('🔍 DEBUG: Filtered nodes by level: ${nodesByLevel.map((k, v) => MapEntry(k, v.length))}');
+      int filteredCount = nodesByLevel.values.fold(0, (sum, list) => sum + list.length);
+      print('🔍 DEBUG: Total filtered markers (STUPA/TANGGA only): $filteredCount');
+      print('🔍 DEBUG: Skipped $skippedCount nodes');
+      print('🔍 DEBUG: Sample skipped names: ${skippedNames.join(", ")}');
+      print('🔍 DEBUG: Sample ACCEPTED names: ${acceptedNames.join(", ")}');
       
       // Add nodes as GeoJSON sources with circle layers per level
       for (final level in nodesByLevel.keys) {
@@ -736,6 +780,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         // Create GeoJSON features for this level (2D mode - no altitude)
         final features = levelNodes.map((node) {
           final color = _getNodeColor(node);
+          final icon = _getNodeIcon(node);
           
           return '''
           {
@@ -749,7 +794,8 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
               "name": "${node.name}",
               "type": "${node.type}",
               "level": ${node.level},
-              "color": "${color.value}"
+              "color": "${color.value}",
+              "icon": "$icon"
             }
           }
           ''';
@@ -770,21 +816,61 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         ));
         print('✅ Added source: $sourceId');
         
-        // Add circle layer for 2D markers with VIEWPORT alignment
+        // Add circle layer for nodes (colorful circles, no symbols)
         final layerId = 'nodes-circles-$level';
+        
+        // Determine dominant type for this level
+        int stupaCount = levelNodes.where((n) => n.name.toUpperCase().contains('STUPA')).length;
+        int tanggaCount = levelNodes.where((n) => n.name.toUpperCase().contains('TANGGA')).length;
+        
+        print('   📊 Level $level analysis: STUPA=$stupaCount, TANGGA=$tanggaCount');
+        
+        // Choose color based on dominant type
+        int circleColor;
+        int strokeColor;
+        double radius;
+        
+        if (stupaCount > tanggaCount) {
+          // STUPA dominant - Orange/Yellow theme
+          circleColor = 0xFFFFA726; // Orange
+          strokeColor = 0xFFFF6F00; // Dark Orange
+          radius = 16.0;
+          print('   🟠 Using ORANGE color (STUPA dominant)');
+        } else if (tanggaCount > 0) {
+          // TANGGA dominant - Green theme
+          circleColor = 0xFF66BB6A; // Green
+          strokeColor = 0xFF2E7D32; // Dark Green
+          radius = 14.0;
+          print('   🟢 Using GREEN color (TANGGA dominant)');
+        } else {
+          // Default - Blue theme
+          circleColor = 0xFF42A5F5; // Blue
+          strokeColor = 0xFF1565C0; // Dark Blue
+          radius = 12.0;
+          print('   🔵 Using BLUE color (default/mixed)');
+        }
+        
+        // Single CircleLayer with distinct colors
         await _mapboxMap!.style.addLayer(CircleLayer(
-          id: layerId,
+          id: layerId, // Use layerId (nodes-circles-$level) for consistency
           sourceId: sourceId,
-          circleRadius: 14.0, // Large for visibility
-          circleColor: Colors.green.value,
-          circleStrokeWidth: 5.0, // Thick stroke
-          circleStrokeColor: Colors.white.value,
-          circleOpacity: 1.0, // Full opacity
-          circlePitchAlignment: CirclePitchAlignment.VIEWPORT, // 2D mode
-          // Ensure circles are always on top
-          circleSortKey: 999.0, // Highest priority
+          circleRadius: radius,
+          circleColor: circleColor,
+          circleStrokeWidth: 4.0,
+          circleStrokeColor: strokeColor,
+          circleOpacity: 1.0,
+          circlePitchAlignment: CirclePitchAlignment.VIEWPORT,
+          circleSortKey: 999.0,
         ));
-        print('✅ Added layer: $layerId for ${levelNodes.length} markers');
+        
+        String typeLabel = stupaCount > tanggaCount ? 'STUPA' : 'TANGGA';
+        print('✅ Added layer: $layerId for ${levelNodes.length} markers (type: $typeLabel, color: ${circleColor.toRadixString(16)})');
+        
+        // DEBUG: Show sample node names to verify filtering
+        if (levelNodes.isNotEmpty) {
+          final sampleNames = levelNodes.take(3).map((n) => n.name).join(', ');
+          print('   Sample names: $sampleNames');
+        }
         
         totalMarkers += levelNodes.length;
       }
@@ -841,16 +927,17 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           data: json.encode(stupaGeoJson),
         ));
         
+        // Big orange circles for STUPA features
         await _mapboxMap!.style.addLayer(CircleLayer(
           id: 'features-stupa-circles',
           sourceId: 'features-stupa-source',
-          circleRadius: 18.0, // Largest for stupa visibility
-          circleColor: Colors.blue.value,
-          circleStrokeWidth: 6.0, // Thickest stroke
-          circleStrokeColor: Colors.white.value,
-          circleOpacity: 1.0, // Full opacity
-          circlePitchAlignment: CirclePitchAlignment.VIEWPORT, // 2D mode
-          circleSortKey: 999.0, // Always on top
+          circleRadius: 20.0,
+          circleColor: 0xFFFF9800, // Orange for stupas
+          circleStrokeWidth: 5.0,
+          circleStrokeColor: 0xFFE65100, // Dark orange
+          circleOpacity: 1.0,
+          circlePitchAlignment: CirclePitchAlignment.VIEWPORT,
+          circleSortKey: 998.0,
         ));
       }
       
@@ -878,16 +965,17 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           data: json.encode(otherGeoJson),
         ));
         
+        // Purple circles for other features
         await _mapboxMap!.style.addLayer(CircleLayer(
           id: 'features-other-circles',
           sourceId: 'features-other-source',
-          circleRadius: 16.0, // Large for feature visibility
-          circleColor: Colors.orange.value,
-          circleStrokeWidth: 6.0, // Thick stroke
-          circleStrokeColor: Colors.white.value,
-          circleOpacity: 1.0, // Full opacity
-          circlePitchAlignment: CirclePitchAlignment.VIEWPORT, // 2D mode
-          circleSortKey: 999.0, // Always on top
+          circleRadius: 18.0,
+          circleColor: 0xFF9C27B0, // Purple for other features
+          circleStrokeWidth: 5.0,
+          circleStrokeColor: 0xFF4A148C, // Dark purple
+          circleOpacity: 1.0,
+          circlePitchAlignment: CirclePitchAlignment.VIEWPORT,
+          circleSortKey: 998.0,
         ));
       }
       
@@ -939,17 +1027,17 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         data: json.encode(facilitiesGeoJson),
       ));
       
-      // Add circle layer for facilities with purple color (distinct from nodes)
+      // Red circles for external facilities (very visible!)
       await _mapboxMap!.style.addLayer(CircleLayer(
         id: 'external-facilities-circles',
         sourceId: 'external-facilities-source',
-        circleRadius: 12.0, // Medium size for visibility
-        circleColor: 0xFFFF5722, // Deep Orange - distinct from other markers
+        circleRadius: 16.0,
+        circleColor: 0xFFF44336, // Bright red for facilities
         circleStrokeWidth: 4.0,
-        circleStrokeColor: Colors.white.value,
+        circleStrokeColor: 0xFFB71C1C, // Dark red
         circleOpacity: 1.0,
         circlePitchAlignment: CirclePitchAlignment.VIEWPORT,
-        circleSortKey: 998.0, // Below nodes but above other elements
+        circleSortKey: 997.0,
       ));
       
       print('✅ Added ${facilities.length} external facility markers');
@@ -1018,7 +1106,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         ..._levelsWithMarkers.map((level) => 'nodes-circles-$level'),
         'features-stupa-circles',
         'features-other-circles',
-        'external-facilities-circles', // Add external facilities layer
+        'external-facilities-circles',
       ];
       print('Querying layers: $layerIds');
       
@@ -2472,39 +2560,41 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     if (_mapboxMap == null) return;
 
     try {
-      // Show only markers for current level and adjacent levels
-      // This makes the view cleaner in 3D mode
+      // Show all markers but with different opacity based on level
+      // This ensures STUPA markers (Level 9) are always visible
       
       // Only update levels that have markers
       for (final level in _levelsWithMarkers) {
-        final layerId = 'nodes-circles-$level';
+        final circleLayerId = 'nodes-circles-$level';
         
-        // Show current level with full opacity, adjacent levels with reduced opacity
+        // Show current level with full opacity, other levels with reduced opacity
         final levelDiff = (level - _currentTempleLevel).abs();
-        String visibility = 'visible';
+        String visibility = 'visible'; // Always visible now
         double opacity = 0.9;
         
         if (levelDiff == 0) {
           // Current level - full visibility
           opacity = 1.0;
-        } else if (levelDiff == 1) {
-          // Adjacent level - reduced opacity
-          opacity = 0.4;
+        } else if (levelDiff <= 2) {
+          // Close levels (1-2 levels away) - medium opacity
+          opacity = 0.6;
         } else {
-          // Far levels - hide to reduce clutter
-          visibility = 'none';
+          // Far levels - low opacity but still visible
+          // This ensures Level 9 (STUPA) is visible even from Level 1
+          opacity = 0.3;
         }
         
         try {
+          // Update circle layer visibility and opacity
           await _mapboxMap!.style.setStyleLayerProperty(
-            layerId,
+            circleLayerId,
             'visibility',
             visibility,
           );
           
           if (visibility == 'visible') {
             await _mapboxMap!.style.setStyleLayerProperty(
-              layerId,
+              circleLayerId,
               'circle-opacity',
               opacity,
             );

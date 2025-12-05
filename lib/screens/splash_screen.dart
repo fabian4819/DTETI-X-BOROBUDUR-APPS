@@ -117,14 +117,6 @@ class _SplashScreenState extends State<SplashScreen>
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Jelajahi Keajaiban Warisan Dunia',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
                     ],
                   ),
                 ),
