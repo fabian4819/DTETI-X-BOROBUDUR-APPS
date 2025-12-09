@@ -127,7 +127,7 @@ class GraphProperties {
       cost: json['cost']?.toDouble(),
       reverseCost: json['reverse_cost']?.toDouble(),
       distanceM: json['distance_m']?.toDouble(),
-      altitude: json['altitude']?.toDouble(),
+      altitude: json['altitude_m']?.toDouble() ?? json['altitude']?.toDouble(), // Support both altitude_m and altitude
     );
   }
 }

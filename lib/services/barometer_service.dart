@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:math';
 import 'package:flutter_barometer/flutter_barometer.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'ios_altimeter_service.dart';
 
 /// Barometer altitude update event
 class BarometerUpdate {
@@ -10,16 +12,18 @@ class BarometerUpdate {
   final double altitude;
   final double relativeAltitude;
   final DateTime timestamp;
+  final bool isFromGPS; // true if using GPS altitude (iOS), false if using barometer (Android)
 
   BarometerUpdate({
     required this.pressure,
     required this.altitude,
     required this.relativeAltitude,
     required this.timestamp,
+    this.isFromGPS = false,
   });
 
   @override
-  String toString() => 'BarometerUpdate(pressure: ${pressure.toStringAsFixed(2)} hPa, altitude: ${altitude.toStringAsFixed(2)}m, relativeAltitude: ${relativeAltitude.toStringAsFixed(2)}m)';
+  String toString() => 'BarometerUpdate(pressure: ${pressure.toStringAsFixed(2)} hPa, altitude: ${altitude.toStringAsFixed(2)}m, relativeAltitude: ${relativeAltitude.toStringAsFixed(2)}m, source: ${isFromGPS ? 'GPS' : 'Barometer'})';
 }
 
 /// Service for managing barometer sensor and altitude calculations
@@ -45,7 +49,11 @@ class BarometerService {
   // State
   bool _isInitialized = false;
   bool _isTracking = false;
+  bool _useGPS = false; // true for iOS GPS fallback, false for Android barometer / iOS CMAltimeter
+  bool _useIOSAltimeter = false; // true if using iOS CMAltimeter (high accuracy)
   StreamSubscription<FlutterBarometerEvent>? _barometerSubscription;
+  StreamSubscription<Position>? _gpsSubscription;
+  final IOSAltimeterService _iosAltimeter = IOSAltimeterService();
 
   // Calibration
   double _basePressure = _seaLevelPressure;
@@ -55,8 +63,8 @@ class BarometerService {
 
   // Readings
   List<double> _pressureReadings = [];
+  List<double> _altitudeReadings = []; // For GPS altitude smoothing
   static const int _maxReadings = 10;
-  static const Duration _readingInterval = Duration(milliseconds: 200);
 
   // Public streams
   Stream<BarometerUpdate> get barometerStream => _barometerController.stream;
@@ -73,13 +81,56 @@ class BarometerService {
     try {
       if (_isInitialized) return true;
 
-      // Check if device has barometer
+      // Platform detection: iOS tries CMAltimeter first, Android uses barometer
+      if (Platform.isIOS) {
+        print('📱 iOS detected: Checking CMAltimeter availability...');
+        
+        // Try iOS CMAltimeter first (high accuracy ~1-3m)
+        final hasAltimeter = await _iosAltimeter.isAvailable();
+        if (hasAltimeter) {
+          _useIOSAltimeter = true;
+          _useGPS = false;
+          print('✅ iOS CMAltimeter available (±1-3m accuracy)');
+          print('📏 Using Core Motion for high-accuracy altitude tracking');
+          
+          _availabilityController.add(true);
+          _isInitialized = true;
+          return true;
+        }
+        
+        // Fallback to GPS if CMAltimeter not available
+        print('⚠️ CMAltimeter not available, falling back to GPS');
+        _useGPS = true;
+        _useIOSAltimeter = false;
+        print('📍 Using GPS altitude (±5-10m accuracy)');
+        
+        // Check location permission for GPS fallback
+        final permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          final requested = await Geolocator.requestPermission();
+          if (requested == LocationPermission.denied || 
+              requested == LocationPermission.deniedForever) {
+            print('❌ Location permission denied');
+            return false;
+          }
+        }
+        
+        _availabilityController.add(true);
+        _isInitialized = true;
+        return true;
+      }
+
+      // Android: Check if device has barometer
+      print('📊 Android detected: Checking barometer sensor...');
       final hasBarometer = await _checkBarometerAvailability();
       _availabilityController.add(hasBarometer);
 
       if (!hasBarometer) {
+        print('❌ Barometer sensor not available');
         return false;
       }
+
+      print('✅ Barometer sensor available (±1-2m accuracy)');
 
       // Load calibration data
       await _loadCalibration();
@@ -96,8 +147,8 @@ class BarometerService {
   Future<bool> _checkBarometerAvailability() async {
     try {
       // Try to access barometer sensor
-      final barometerStream = flutterBarometerEvents;
-      return barometerStream != null;
+      flutterBarometerEvents;
+      return true;
     } catch (e) {
       print('Barometer not available: $e');
       return false;
@@ -114,13 +165,52 @@ class BarometerService {
 
       if (_isTracking) return true;
 
-      _barometerSubscription = flutterBarometerEvents.listen(_handleBarometerEvent);
-      _isTracking = true;
+      if (_useIOSAltimeter) {
+        // iOS: Use CMAltimeter (high accuracy)
+        print('📏 Starting iOS CMAltimeter tracking...');
+        
+        _iosAltimeter.startListening(
+          (iosUpdate) {
+            _handleIOSAltimeterUpdate(iosUpdate);
+          },
+          onError: (error) {
+            print('iOS Altimeter error: $error');
+          },
+        );
+        
+        print('✅ Altitude tracking started (iOS CMAltimeter, ±1-3m accuracy)');
+      } else if (_useGPS) {
+        // iOS: Use GPS altitude tracking (fallback)
+        print('📍 Starting GPS altitude tracking...');
+        
+        const locationSettings = LocationSettings(
+          accuracy: LocationAccuracy.best,
+          distanceFilter: 0, // Get all updates
+        );
+        
+        _gpsSubscription = Geolocator.getPositionStream(
+          locationSettings: locationSettings,
+        ).listen(
+          (Position position) {
+            _handleGPSAltitude(position.altitude);
+          },
+          onError: (error) {
+            print('GPS error: $error');
+          },
+        );
+        
+        print('✅ Altitude tracking started (GPS, ±5-10m accuracy)');
+      } else {
+        // Android: Use barometer sensor
+        print('📊 Starting barometer tracking...');
+        _barometerSubscription = flutterBarometerEvents.listen(_handleBarometerEvent);
+        print('✅ Altitude tracking started (Barometer, ±1-2m accuracy)');
+      }
 
-      print('Barometer tracking started');
+      _isTracking = true;
       return true;
     } catch (e) {
-      print('Error starting barometer tracking: $e');
+      print('Error starting altitude tracking: $e');
       return false;
     }
   }
@@ -130,11 +220,14 @@ class BarometerService {
     try {
       _barometerSubscription?.cancel();
       _barometerSubscription = null;
+      _gpsSubscription?.cancel();
+      _gpsSubscription = null;
+      _iosAltimeter.stopListening();
       _isTracking = false;
 
-      print('Barometer tracking stopped');
+      print('Altitude tracking stopped');
     } catch (e) {
-      print('Error stopping barometer tracking: $e');
+      print('Error stopping altitude tracking: $e');
     }
   }
 
@@ -175,6 +268,77 @@ class BarometerService {
     }
   }
 
+  /// Handle iOS CMAltimeter updates (high accuracy)
+  void _handleIOSAltimeterUpdate(IOSAltitudeUpdate iosUpdate) {
+    try {
+      // Check if stream is closed before adding events
+      if (_barometerController.isClosed) {
+        return;
+      }
+
+      // iOS CMAltimeter provides relative altitude directly
+      final relativeAltitude = iosUpdate.relativeAltitude;
+      final pressure = iosUpdate.pressure;
+
+      // Update current relative altitude
+      _currentRelativeAltitude = relativeAltitude;
+
+      // Calculate absolute altitude (relative + base)
+      final absoluteAltitude = _baseAltitude + relativeAltitude;
+
+      // Create update event
+      final update = BarometerUpdate(
+        pressure: pressure,
+        altitude: absoluteAltitude,
+        relativeAltitude: relativeAltitude,
+        timestamp: iosUpdate.timestamp,
+        isFromGPS: false, // This is from CMAltimeter, not GPS
+      );
+
+      _barometerController.add(update);
+    } catch (e) {
+      print('Error handling iOS altimeter update: $e');
+    }
+  }
+
+  /// Handle GPS altitude updates (iOS fallback)
+  void _handleGPSAltitude(double gpsAltitude) {
+    try {
+      // Check if stream is closed before adding events
+      if (_barometerController.isClosed) {
+        return;
+      }
+
+      // Add to readings buffer for smoothing
+      _altitudeReadings.add(gpsAltitude);
+      if (_altitudeReadings.length > _maxReadings) {
+        _altitudeReadings.removeAt(0);
+      }
+
+      // Calculate smoothed altitude
+      final smoothedAltitude = _getSmoothedAltitude();
+
+      // Calculate relative altitude
+      _currentRelativeAltitude = smoothedAltitude - _baseAltitude;
+
+      // Estimate pressure from altitude using reverse barometric formula
+      final estimatedPressure = _calculatePressureFromAltitude(smoothedAltitude);
+
+      // Create update event
+      final update = BarometerUpdate(
+        pressure: estimatedPressure,
+        altitude: smoothedAltitude,
+        relativeAltitude: _currentRelativeAltitude,
+        timestamp: DateTime.now(),
+        isFromGPS: true, // Mark as GPS-based
+      );
+
+      _barometerController.add(update);
+    } catch (e) {
+      print('Error handling GPS altitude: $e');
+    }
+  }
+
   /// Get smoothed pressure value from recent readings
   double _getSmoothedPressure() {
     if (_pressureReadings.isEmpty) return _seaLevelPressure;
@@ -190,6 +354,23 @@ class BarometerService {
     }
 
     return totalWeight > 0 ? weightedSum / totalWeight : _seaLevelPressure;
+  }
+
+  /// Get smoothed altitude value from recent GPS readings
+  double _getSmoothedAltitude() {
+    if (_altitudeReadings.isEmpty) return 0.0;
+
+    // Use weighted average (more weight to recent readings)
+    double weightedSum = 0.0;
+    double totalWeight = 0.0;
+
+    for (int i = 0; i < _altitudeReadings.length; i++) {
+      final weight = (i + 1) / _altitudeReadings.length; // Linear weight
+      weightedSum += _altitudeReadings[i] * weight;
+      totalWeight += weight;
+    }
+
+    return totalWeight > 0 ? weightedSum / totalWeight : 0.0;
   }
 
   /// Calculate absolute altitude from pressure using barometric formula
@@ -217,32 +398,65 @@ class BarometerService {
     }
   }
 
+  /// Calculate pressure from altitude (reverse barometric formula for GPS)
+  double _calculatePressureFromAltitude(double altitude) {
+    try {
+      // Reverse barometric formula: P = P0 * (1 - L*h/T0)^(g*M/(R*L))
+      // Where: P0 = sea level pressure, L = lapse rate, h = altitude, 
+      //        T0 = temperature, g = gravity, M = molar mass, R = gas constant
+      final ratio = 1.0 - (_pressureLapseRate * altitude / _temperatureKelvin);
+      final exponent = (_gravity * _molarMass) / (_gasConstant * _pressureLapseRate);
+      return _seaLevelPressure * pow(ratio, exponent);
+    } catch (e) {
+      print('Error calculating pressure from altitude: $e');
+      return _seaLevelPressure;
+    }
+  }
+
+  // Calibration methods
+
   /// Calibrate barometer at current location
   Future<void> calibrateHere({double? knownAltitude}) async {
     try {
-      if (_pressureReadings.isEmpty) {
-        print('No pressure readings available for calibration');
-        return;
-      }
-
-      final currentPressure = _getSmoothedPressure();
-      _basePressure = currentPressure;
-
-      if (knownAltitude != null) {
-        _baseAltitude = knownAltitude;
+      if (_useGPS) {
+        // iOS GPS calibration
+        if (_altitudeReadings.isEmpty) {
+          print('No GPS altitude readings available for calibration');
+          return;
+        }
+        
+        final currentAltitude = _getSmoothedAltitude();
+        _baseAltitude = knownAltitude ?? currentAltitude;
+        _isCalibrated = true;
+        _currentRelativeAltitude = 0.0;
+        
+        print('GPS altitude calibrated: baseAltitude=${_baseAltitude.toStringAsFixed(2)}m');
       } else {
-        _baseAltitude = _calculateAbsoluteAltitude(currentPressure);
-      }
+        // Android barometer calibration
+        if (_pressureReadings.isEmpty) {
+          print('No pressure readings available for calibration');
+          return;
+        }
 
-      _isCalibrated = true;
-      _currentRelativeAltitude = 0.0;
+        final currentPressure = _getSmoothedPressure();
+        _basePressure = currentPressure;
+
+        if (knownAltitude != null) {
+          _baseAltitude = knownAltitude;
+        } else {
+          _baseAltitude = _calculateAbsoluteAltitude(currentPressure);
+        }
+
+        _isCalibrated = true;
+        _currentRelativeAltitude = 0.0;
+
+        print('Barometer calibrated: basePressure=${_basePressure.toStringAsFixed(2)} hPa, baseAltitude=${_baseAltitude.toStringAsFixed(2)}m');
+      }
 
       // Save calibration
       await _saveCalibration();
-
-      print('Barometer calibrated: basePressure=${_basePressure.toStringAsFixed(2)} hPa, baseAltitude=${_baseAltitude.toStringAsFixed(2)}m');
     } catch (e) {
-      print('Error calibrating barometer: $e');
+      print('Error calibrating: $e');
     }
   }
 
@@ -303,23 +517,44 @@ class BarometerService {
 
   /// Get current sensor status information
   Map<String, dynamic> getStatus() {
+    String dataSource;
+    String accuracy;
+    
+    if (_useIOSAltimeter) {
+      dataSource = 'iOS CMAltimeter';
+      accuracy = '±1-3m';
+    } else if (_useGPS) {
+      dataSource = 'GPS Altitude';
+      accuracy = '±5-10m';
+    } else {
+      dataSource = 'Barometer Sensor';
+      accuracy = '±1-2m';
+    }
+    
     return {
       'initialized': _isInitialized,
       'tracking': _isTracking,
       'calibrated': _isCalibrated,
+      'platform': Platform.isIOS ? 'iOS' : 'Android',
+      'dataSource': dataSource,
+      'accuracy': accuracy,
       'basePressure': _basePressure,
       'baseAltitude': _baseAltitude,
       'currentRelativeAltitude': _currentRelativeAltitude,
       'pressureReadingsCount': _pressureReadings.length,
+      'altitudeReadingsCount': _altitudeReadings.length,
       'lastPressure': _pressureReadings.isNotEmpty ? _pressureReadings.last : null,
+      'lastAltitude': _altitudeReadings.isNotEmpty ? _altitudeReadings.last : null,
     };
   }
 
   /// Dispose resources
   void dispose() {
     stopTracking();
+    _iosAltimeter.dispose();
     _barometerController.close();
     _availabilityController.close();
     _pressureReadings.clear();
+    _altitudeReadings.clear();
   }
 }
