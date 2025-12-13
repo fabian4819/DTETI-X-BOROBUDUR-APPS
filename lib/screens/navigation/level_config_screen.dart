@@ -185,17 +185,59 @@ class _LevelConfigScreenState extends State<LevelConfigScreen> {
   }
 
   Future<void> _calibrateHere() async {
-    final confirmed = await _showConfirmation(
-      'Calibrate at Current Location',
-      'Set current altitude as 0m reference point for all levels?',
+    // Show dialog with options
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kalibrasi Barometer'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pilih metode kalibrasi:'),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.temple_buddhist, color: Colors.orange),
+              title: const Text('Auto Borobudur'),
+              subtitle: const Text('Set base altitude 265m mdpl (lantai dasar candi)'),
+              onTap: () => Navigator.of(context).pop('borobudur'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.location_on, color: Colors.blue),
+              title: const Text('Lokasi Saat Ini'),
+              subtitle: const Text('Set posisi sekarang sebagai 0m referensi'),
+              onTap: () => Navigator.of(context).pop('here'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Batal'),
+          ),
+        ],
+      ),
     );
 
-    if (confirmed) {
-      try {
+    if (result == null) return;
+
+    try {
+      if (result == 'borobudur') {
+        // Calibrate for Borobudur specifically
+        await _barometerService.calibrateForBorobudur();
+        if (mounted) {
+          _showSuccess('✅ Barometer dikalibrasi untuk Candi Borobudur\n📏 Base altitude: 265m mdpl\n📍 0m = Lantai dasar candi');
+        }
+      } else if (result == 'here') {
+        // Calibrate at current location
         await _barometerService.calibrateHere();
-        _showSuccess('Barometer calibrated at current location');
-      } catch (e) {
-        _showError('Calibration failed: $e');
+        if (mounted) {
+          _showSuccess('✅ Barometer dikalibrasi di lokasi saat ini\n📍 Posisi sekarang = 0m referensi');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('❌ Kalibrasi gagal: $e');
       }
     }
   }
@@ -296,6 +338,11 @@ class _LevelConfigScreenState extends State<LevelConfigScreen> {
   }
 
   Widget _buildStatusPanel() {
+    final barometerStatus = _barometerService.getStatus();
+    final isCalibrated = barometerStatus['calibrated'] as bool? ?? false;
+    final baseAltitude = barometerStatus['baseAltitude'] as double? ?? 0.0;
+    final isBorobudurCalibrated = (baseAltitude - _barometerService.borobudurBaseElevation).abs() < 1.0;
+    
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
@@ -312,6 +359,7 @@ class _LevelConfigScreenState extends State<LevelConfigScreen> {
       ),
       child: Column(
         children: [
+          // Tracking status
           Row(
             children: [
               Icon(
@@ -343,6 +391,44 @@ class _LevelConfigScreenState extends State<LevelConfigScreen> {
               ),
             ],
           ),
+          
+          // Calibration status
+          if (isCalibrated) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isBorobudurCalibrated ? Colors.orange.withOpacity(0.2) : Colors.blue.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isBorobudurCalibrated ? Colors.orange : Colors.blue,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isBorobudurCalibrated ? Icons.temple_buddhist : Icons.location_on,
+                    size: 16,
+                    color: isBorobudurCalibrated ? Colors.orange : Colors.blue,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    isBorobudurCalibrated 
+                        ? '🏛️ Kalibrasi Borobudur (${baseAltitude.toStringAsFixed(0)}m mdpl)'
+                        : '📍 Kalibrasi Custom (${baseAltitude.toStringAsFixed(1)}m)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isBorobudurCalibrated ? Colors.orange[800] : Colors.blue[800],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
           const SizedBox(height: 12),
           Row(
             children: [

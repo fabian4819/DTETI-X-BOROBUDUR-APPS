@@ -45,6 +45,11 @@ class BarometerService {
   static const double _gasConstant = 8.31447; // J/(mol·K)
   static const double _gravity = 9.80665; // m/s²
   static const double _molarMass = 0.0289644; // kg/mol
+  
+  // Candi Borobudur specific configuration
+  static const double BOROBUDUR_BASE_ELEVATION = 265.0; // meters above sea level (mdpl)
+  static const double BOROBUDUR_GROUND_LEVEL = 0.0; // Ground floor reference (lantai dasar)
+  static const bool AUTO_CALIBRATE_BOROBUDUR = true; // Auto-calibrate for Borobudur site
 
   // State
   bool _isInitialized = false;
@@ -75,6 +80,9 @@ class BarometerService {
   bool get isTracking => _isTracking;
   bool get isCalibrated => _isCalibrated;
   double get currentRelativeAltitude => _currentRelativeAltitude;
+  double get baseAltitude => _baseAltitude;
+  double get borobudurGroundLevel => BOROBUDUR_GROUND_LEVEL;
+  double get borobudurBaseElevation => BOROBUDUR_BASE_ELEVATION;
 
   /// Initialize the barometer service
   Future<bool> initialize() async {
@@ -206,8 +214,16 @@ class BarometerService {
         _barometerSubscription = flutterBarometerEvents.listen(_handleBarometerEvent);
         print('✅ Altitude tracking started (Barometer, ±1-2m accuracy)');
         
-        // Auto-calibrate if not calibrated yet (wait for first few readings)
-        if (!_isCalibrated) {
+        // Auto-calibrate for Borobudur if enabled and not calibrated
+        if (AUTO_CALIBRATE_BOROBUDUR && !_isCalibrated) {
+          print('🏛️ Auto-calibrating for Candi Borobudur (base elevation: ${BOROBUDUR_BASE_ELEVATION}m mdpl)...');
+          Future.delayed(const Duration(seconds: 2), () async {
+            if (!_isCalibrated && _pressureReadings.isNotEmpty) {
+              await calibrateForBorobudur();
+            }
+          });
+        } else if (!_isCalibrated) {
+          // Fallback: auto-calibrate at current location
           print('⚙️ Barometer not calibrated, will auto-calibrate after initial readings...');
           Future.delayed(const Duration(seconds: 2), () async {
             if (!_isCalibrated && _pressureReadings.isNotEmpty) {
@@ -459,6 +475,67 @@ class BarometerService {
 
   // Calibration methods
 
+  /// Calibrate barometer specifically for Candi Borobudur
+  /// Sets the base altitude to Borobudur's ground level (265m mdpl)
+  /// This ensures relative altitude shows height from ground floor (0m = lantai dasar)
+  Future<void> calibrateForBorobudur() async {
+    try {
+      if (_useGPS) {
+        // iOS GPS calibration for Borobudur
+        _baseAltitude = BOROBUDUR_BASE_ELEVATION;
+        _isCalibrated = true;
+        _currentRelativeAltitude = 0.0;
+        
+        print('🏛️ GPS calibrated for Candi Borobudur: baseAltitude=${BOROBUDUR_BASE_ELEVATION}m mdpl');
+        print('📏 Relative altitude will show height from ground level (0m = lantai dasar)');
+      } else if (_useIOSAltimeter) {
+        // iOS CMAltimeter calibration for Borobudur
+        _baseAltitude = BOROBUDUR_BASE_ELEVATION;
+        _isCalibrated = true;
+        _currentRelativeAltitude = 0.0;
+        
+        print('🏛️ iOS Altimeter calibrated for Candi Borobudur: baseAltitude=${BOROBUDUR_BASE_ELEVATION}m mdpl');
+        print('📏 Relative altitude will show height from ground level (0m = lantai dasar)');
+      } else {
+        // Android barometer calibration for Borobudur
+        if (_pressureReadings.isEmpty) {
+          print('⚠️ No pressure readings available for Borobudur calibration');
+          print('📊 Will calibrate once sensor data is available...');
+          return;
+        }
+
+        final currentPressure = _getSmoothedPressure();
+        
+        // Calculate what the pressure should be at Borobudur's base elevation (265m mdpl)
+        // Using reverse barometric formula: P = P0 * (1 - L*h/T0)^(g*M/(R*L))
+        final ratio = 1.0 - (_pressureLapseRate * BOROBUDUR_BASE_ELEVATION / _temperatureKelvin);
+        final exponent = (_gravity * _molarMass) / (_gasConstant * _pressureLapseRate);
+        final expectedPressureAt265m = _seaLevelPressure * pow(ratio, exponent);
+        
+        // Set base pressure to expected pressure at ground level
+        // This way, relative altitude will be 0 at ground floor
+        _basePressure = currentPressure;
+        _baseAltitude = BOROBUDUR_BASE_ELEVATION;
+        _isCalibrated = true;
+        _currentRelativeAltitude = 0.0;
+
+        print('🏛️ Barometer calibrated for Candi Borobudur:');
+        print('   • Base pressure: ${_basePressure.toStringAsFixed(2)} hPa (current ground level)');
+        print('   • Base altitude: ${BOROBUDUR_BASE_ELEVATION}m mdpl');
+        print('   • Expected pressure at 265m: ${expectedPressureAt265m.toStringAsFixed(2)} hPa');
+        print('📏 Relative altitude will show height from ground level:');
+        print('   • 0m = Lantai dasar (ground floor)');
+        print('   • ~15m = Lantai tengah (middle terraces)');
+        print('   • ~35m = Puncak stupa (top platform)');
+      }
+
+      // Save calibration
+      await _saveCalibration();
+    } catch (e) {
+      print('❌ Error calibrating for Borobudur: $e');
+    }
+  }
+
   /// Calibrate barometer at current location
   Future<void> calibrateHere({double? knownAltitude}) async {
     try {
@@ -559,6 +636,32 @@ class BarometerService {
     }
   }
 
+  /// Get temple level description based on relative altitude
+  /// Returns estimated level (lantai) based on Borobudur's typical structure
+  String getTempleLevelDescription(double relativeAltitude) {
+    if (relativeAltitude < 5) {
+      return 'Lantai Dasar (Ground Level)';
+    } else if (relativeAltitude < 10) {
+      return 'Lantai 1-2 (Lower Terraces)';
+    } else if (relativeAltitude < 20) {
+      return 'Lantai 3-5 (Middle Terraces)';
+    } else if (relativeAltitude < 30) {
+      return 'Lantai 6-7 (Upper Terraces)';
+    } else if (relativeAltitude < 40) {
+      return 'Lantai 8-9 (Top Platform)';
+    } else {
+      return 'Puncak Stupa (Main Stupa)';
+    }
+  }
+
+  /// Get estimated temple level number (1-10) based on altitude
+  /// This is a rough estimate, use LevelDetectionService for accurate detection
+  int getEstimatedLevel(double relativeAltitude) {
+    // Rough estimation: ~3.5-4m per level
+    final level = (relativeAltitude / 3.8).round() + 1;
+    return level.clamp(1, 10);
+  }
+
   /// Get current sensor status information
   Map<String, dynamic> getStatus() {
     String dataSource;
@@ -585,6 +688,7 @@ class BarometerService {
       'basePressure': _basePressure,
       'baseAltitude': _baseAltitude,
       'currentRelativeAltitude': _currentRelativeAltitude,
+      'borobudurBaseElevation': BOROBUDUR_BASE_ELEVATION,
       'pressureReadingsCount': _pressureReadings.length,
       'altitudeReadingsCount': _altitudeReadings.length,
       'lastPressure': _pressureReadings.isNotEmpty ? _pressureReadings.last : null,
