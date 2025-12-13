@@ -205,6 +205,17 @@ class BarometerService {
         print('📊 Starting barometer tracking...');
         _barometerSubscription = flutterBarometerEvents.listen(_handleBarometerEvent);
         print('✅ Altitude tracking started (Barometer, ±1-2m accuracy)');
+        
+        // Auto-calibrate if not calibrated yet (wait for first few readings)
+        if (!_isCalibrated) {
+          print('⚙️ Barometer not calibrated, will auto-calibrate after initial readings...');
+          Future.delayed(const Duration(seconds: 2), () async {
+            if (!_isCalibrated && _pressureReadings.isNotEmpty) {
+              print('🔧 Auto-calibrating barometer at current location...');
+              await calibrateHere();
+            }
+          });
+        }
       }
 
       _isTracking = true;
@@ -240,6 +251,12 @@ class BarometerService {
       }
       
       final pressure = event.pressure;
+      
+      // Validate pressure reading
+      if (pressure <= 0 || pressure > 1100) {
+        print('⚠️ Invalid pressure from sensor: $pressure hPa - Skipping this reading');
+        return;
+      }
 
       // Add to readings buffer for smoothing
       _pressureReadings.add(pressure);
@@ -376,9 +393,20 @@ class BarometerService {
   /// Calculate absolute altitude from pressure using barometric formula
   double _calculateAbsoluteAltitude(double pressure) {
     try {
-      final exponent = (_gasConstant * _temperatureKelvin) / (_molarMass * _gravity);
+      // Validate pressure reading
+      if (pressure <= 0 || pressure > 1100) {
+        print('⚠️ Invalid pressure reading: $pressure hPa');
+        return 0.0;
+      }
+      
+      // Standard barometric formula: h = 44330 * (1 - (P/P0)^(1/5.255))
+      // More accurate: h = (T0/L) * (1 - (P/P0)^((R*L)/(g*M)))
+      // Using simplified formula for better accuracy
+      final exponent = 1.0 / 5.255; // This is approximately (R*L)/(g*M)
       final ratio = pow(pressure / _seaLevelPressure, exponent);
-      return _temperatureKelvin * (1.0 - ratio) / _pressureLapseRate;
+      final altitude = 44330.0 * (1.0 - ratio);
+      
+      return altitude;
     } catch (e) {
       print('Error calculating absolute altitude: $e');
       return 0.0;
@@ -388,10 +416,26 @@ class BarometerService {
   /// Calculate relative altitude from base pressure
   double _calculateRelativeAltitude(double pressure) {
     try {
-      final exponent = (_gasConstant * _temperatureKelvin) / (_molarMass * _gravity);
+      // Validate pressure reading
+      if (pressure <= 0 || pressure > 1100) {
+        print('⚠️ Invalid pressure reading for relative altitude: $pressure hPa');
+        return 0.0;
+      }
+      
+      // Validate base pressure
+      if (_basePressure <= 0 || _basePressure > 1100) {
+        print('⚠️ Invalid base pressure: $_basePressure hPa, resetting to sea level');
+        _basePressure = _seaLevelPressure;
+      }
+      
+      // Calculate relative altitude using simplified formula
+      // h_relative = 44330 * ((P0/P_base)^(1/5.255) - (P0/P_current)^(1/5.255))
+      // Simplified: h_relative = 44330 * (1 - (P_current/P_base)^(1/5.255))
+      final exponent = 1.0 / 5.255;
       final ratio = pow(pressure / _basePressure, exponent);
-      final relativeAltitude = _temperatureKelvin * (1.0 - ratio) / _pressureLapseRate;
-      return relativeAltitude - _baseAltitude;
+      final relativeAltitude = 44330.0 * (1.0 - ratio);
+      
+      return relativeAltitude;
     } catch (e) {
       print('Error calculating relative altitude: $e');
       return 0.0;

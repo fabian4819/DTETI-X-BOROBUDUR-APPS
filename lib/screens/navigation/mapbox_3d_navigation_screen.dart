@@ -232,6 +232,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           setState(() {
             _currentAltitude = update.relativeAltitude;
           });
+          
+          // Debug logging for altitude detection
+          print('📏 Altitude Update: ${update.relativeAltitude.toStringAsFixed(2)}m | Pressure: ${update.pressure.toStringAsFixed(2)} hPa');
         }
       });
 
@@ -3327,6 +3330,10 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                     Text(
                       '${_currentAltitude.toStringAsFixed(1)}m',
                       style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                    Text(
+                      'relatif',
+                      style: TextStyle(fontSize: 8, color: Colors.grey[400], fontStyle: FontStyle.italic),
                     ),
                   ],
                 ),
