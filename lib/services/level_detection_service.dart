@@ -152,88 +152,73 @@ class LevelDetectionService {
   }
 
   /// Get default Borobudur temple level configuration
-  /// Based on actual Borobudur structure: ~35m total height from base to top
-  /// Calibrated to show relative altitude from ground level (0m = lantai dasar)
+  /// Based on actual Borobudur structure with accurate altitude measurements
+  /// Calibrated to absolute altitude (mdpl): Ground=265, L1=271, L2=275, L3=278, L4=281, L5=283
+  /// Relative altitude from ground level: 0m = lantai dasar (265 mdpl)
   List<TempleLevelConfig> _getDefaultBorobudurConfig() {
     return [
       TempleLevelConfig(
         level: 1,
-        name: 'Lantai 1 - Alas Candi',
+        name: 'Lantai Dasar',
         minAltitude: -2.0, // Allow some buffer below ground
-        maxAltitude: 4.0,
-        description: 'Dasar dan jalan masuk utama',
+        maxAltitude: 3.0,  // Up to 3m above ground (268 mdpl)
+        description: 'Dasar candi dan jalan masuk utama (265 mdpl)',
         color: Color(0xFF8B4513), // Brown
       ),
       TempleLevelConfig(
         level: 2,
-        name: 'Lantai 2 - Kamadhatu Bawah',
-        minAltitude: 4.0,
-        maxAltitude: 8.0,
-        description: 'Tingkat Kamadhatu (alam keinginan)',
+        name: 'Lantai 1',
+        minAltitude: 3.0,   // 268 mdpl
+        maxAltitude: 8.0,   // 273 mdpl (avg 271 mdpl)
+        description: 'Tingkat pertama candi (271 mdpl)',
         color: Color(0xFFA0522D), // Sienna
       ),
       TempleLevelConfig(
         level: 3,
-        name: 'Lantai 3 - Kamadhatu Atas',
-        minAltitude: 8.0,
-        maxAltitude: 12.0,
-        description: 'Relief Lalitavistara & Jataka',
+        name: 'Lantai 2',
+        minAltitude: 8.0,   // 273 mdpl
+        maxAltitude: 11.5,  // 276.5 mdpl (avg 275 mdpl)
+        description: 'Tingkat kedua candi (275 mdpl)',
         color: Color(0xFFCD853F), // Peru
       ),
       TempleLevelConfig(
         level: 4,
-        name: 'Lantai 4 - Rupadhatu Bawah',
-        minAltitude: 12.0,
-        maxAltitude: 16.0,
-        description: 'Tingkat Rupadhatu (alam bentuk)',
+        name: 'Lantai 3',
+        minAltitude: 11.5,  // 276.5 mdpl
+        maxAltitude: 14.5,  // 279.5 mdpl (avg 278 mdpl)
+        description: 'Tingkat ketiga candi (278 mdpl)',
         color: Color(0xFFD2691E), // Chocolate
       ),
       TempleLevelConfig(
         level: 5,
-        name: 'Lantai 5 - Rupadhatu Tengah',
-        minAltitude: 16.0,
-        maxAltitude: 20.0,
-        description: 'Relief Gandavyuha, candi-candi Buddha',
+        name: 'Lantai 4',
+        minAltitude: 14.5,  // 279.5 mdpl
+        maxAltitude: 17.5,  // 282.5 mdpl (avg 281 mdpl)
+        description: 'Tingkat keempat candi (281 mdpl)',
         color: Color(0xFFDEB887), // Burlywood
       ),
       TempleLevelConfig(
         level: 6,
-        name: 'Lantai 6 - Rupadhatu Atas',
-        minAltitude: 20.0,
-        maxAltitude: 24.0,
-        description: 'Lanjutan Gandavyuha, stupa-stupa kecil',
+        name: 'Lorong 5',
+        minAltitude: 17.5,  // 282.5 mdpl
+        maxAltitude: 20.0,  // 285 mdpl (avg 283 mdpl)
+        description: 'Lorong kelima candi (283 mdpl)',
         color: Color(0xFFF4A460), // Sandy brown
       ),
       TempleLevelConfig(
         level: 7,
-        name: 'Lantai 7 - Arupadhatu Pertama',
-        minAltitude: 24.0,
-        maxAltitude: 28.0,
-        description: 'Tingkat Arupadhatu (alam tanpa bentuk), teras melingkar',
+        name: 'Lantai 6',
+        minAltitude: 20.0,  // 285 mdpl
+        maxAltitude: 24.0,  // 289 mdpl
+        description: 'Tingkat keenam, teras melingkar',
         color: Color(0xFFFFD700), // Gold
       ),
       TempleLevelConfig(
         level: 8,
-        name: 'Lantai 8 - Arupadhatu Kedua',
-        minAltitude: 28.0,
-        maxAltitude: 32.0,
-        description: 'Stupa berlubang, menuju puncak',
-        color: Color(0xFFFFE4B5), // Moccasin
-      ),
-      TempleLevelConfig(
-        level: 9,
-        name: 'Lantai 9 - Arupadhatu Ketiga',
-        minAltitude: 32.0,
-        maxAltitude: 36.0,
-        description: 'Teras puncak, stupa utama',
-        color: Color(0xFFFFFACD), // Lemon chiffon
-      ),
-      TempleLevelConfig(
-        level: 10,
-        name: 'Lantai 10 - Puncak Stupa',
-        minAltitude: 36.0,
-        maxAltitude: 50.0, // Extra buffer for top
-        description: 'Puncak tertinggi - Stupa Utama',
+        name: 'Lantai 7-8 & Puncak',
+        minAltitude: 24.0,  // 289 mdpl
+        maxAltitude: 50.0,  // Extra buffer for top
+        description: 'Tingkat atas dan puncak stupa utama',
         color: Color(0xFF00CED1), // Dark turquoise
       ),
     ];

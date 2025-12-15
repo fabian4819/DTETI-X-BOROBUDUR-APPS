@@ -320,9 +320,6 @@ class _LevelConfigScreenState extends State<LevelConfigScreen> {
           // Real-time status panel
           _buildStatusPanel(),
 
-          // Hysteresis control
-          _buildHysteresisPanel(),
-
           // Level configurations
           Expanded(
             child: _buildLevelConfigurations(),
