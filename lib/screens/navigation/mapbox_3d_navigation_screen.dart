@@ -69,6 +69,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   LocationMode _locationMode = LocationMode.currentLocation;
   geo.Position? _customStartLocation;
   bool _isSelectingStartLocation = false;
+  bool _isSelectingNodeLocation = false; // For selecting node from map
   bool _showLocationModePanel = false;
 
   // Map center mode
@@ -89,6 +90,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   // Barometer and level detection
   int _currentTempleLevel = 1;
   double _currentAltitude = 0.0;
+  double _currentPressure = 0.0;
   bool _isBarometerAvailable = false;
   StreamSubscription<BarometerUpdate>? _barometerSubscription;
   StreamSubscription<int>? _levelSubscription;
@@ -136,6 +138,49 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
       _checkLocationPermissionStatus();
+      
+      // Restart barometer tracking if it was stopped
+      if (_isBarometerAvailable && !_barometerService.isTracking) {
+        print('🔄 Resuming barometer tracking...');
+        _barometerService.startTracking();
+        _levelDetectionService.startDetection();
+      }
+      
+      // Re-subscribe to streams if needed
+      if (_isBarometerAvailable && _barometerSubscription == null) {
+        print('🔄 Re-subscribing to barometer stream...');
+        _barometerSubscription = _barometerService.barometerStream.listen((update) {
+          if (mounted) {
+            setState(() {
+              _currentAltitude = update.relativeAltitude;
+              _currentPressure = update.pressure;
+            });
+            print('📏 Altitude Update: ${update.relativeAltitude.toStringAsFixed(2)}m | Pressure: ${update.pressure.toStringAsFixed(2)} hPa');
+          }
+        });
+        
+        _levelSubscription = _levelDetectionService.levelStream.listen((level) {
+          if (mounted) {
+            setState(() {
+              _currentTempleLevel = level;
+            });
+            print('🏛️ Level detected: $level');
+            
+            if (isNavigating) {
+              _speakInstruction('Anda sekarang di lantai $level');
+            }
+            
+            _update3DExtrusion();
+            _updateMarkersVisibility();
+            _update3DBuildingVisibility(level);
+          }
+        });
+      }
+    } else if (state == AppLifecycleState.paused) {
+      // Optional: Stop tracking when app is paused to save battery
+      // Uncomment if needed:
+      // _barometerService.stopTracking();
+      // _levelDetectionService.stopDetection();
     }
   }
 
@@ -179,8 +224,12 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     _pulseController.dispose();
     _flutterTts.stop();
     _navigationService.dispose();
-    _barometerService.dispose();
-    _levelDetectionService.dispose();
+    
+    // Don't dispose barometer and level detection services as they are singletons
+    // and should keep running even when navigating away from this screen
+    // _barometerService.dispose();
+    // _levelDetectionService.dispose();
+    
     super.dispose();
   }
 
@@ -197,29 +246,47 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
 
   Future<void> _initializeBarometerServices() async {
     try {
+      print('🔧 Starting barometer services initialization...');
+      
       final barometerInitialized = await _barometerService.initialize();
+      print('📊 Barometer initialized: $barometerInitialized');
+      
       if (!barometerInitialized) {
-        print('Barometer service initialization failed');
+        print('❌ Barometer service initialization failed');
         return;
       }
 
       final levelDetectionInitialized = await _levelDetectionService.initialize();
+      print('📏 Level detection initialized: $levelDetectionInitialized');
+      
       if (!levelDetectionInitialized) {
-        print('Level detection service initialization failed');
+        print('❌ Level detection service initialization failed');
         return;
       }
 
       setState(() {
         _isBarometerAvailable = true;
       });
+      
+      print('✅ Barometer available, starting tracking...');
+
+      // Start barometer tracking
+      await _barometerService.startTracking();
+      print('✅ Barometer tracking started');
+      
+      // Check if barometer is actually tracking
+      print('📡 Barometer tracking status: ${_barometerService.isTracking}');
 
       await _levelDetectionService.startDetection();
+      print('✅ Level detection started');
 
       _levelSubscription = _levelDetectionService.levelStream.listen((level) {
         if (mounted) {
           setState(() {
             _currentTempleLevel = level;
           });
+          
+          print('🏛️ Level detected: $level');
 
           if (isNavigating) {
             _speakInstruction('Anda sekarang di lantai $level');
@@ -238,6 +305,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         if (mounted) {
           setState(() {
             _currentAltitude = update.relativeAltitude;
+            _currentPressure = update.pressure;
           });
           
           // Debug logging for altitude detection
@@ -245,9 +313,11 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         }
       });
 
-      print('Barometer and level detection services initialized successfully');
+      print('✅ Barometer and level detection services initialized successfully');
+      print('🎧 Stream listeners attached');
     } catch (e) {
-      print('Error initializing barometer services: $e');
+      print('❌ Error initializing barometer services: $e');
+      print('Stack trace: ${StackTrace.current}');
       setState(() {
         _isBarometerAvailable = false;
       });
@@ -1294,40 +1364,108 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   }
 
   // Handle map tap to detect marker clicks
-  void _onMapTappedFromContext(MapContentGestureContext context) async {
+  Future<void> _onMapTappedFromContext(MapContentGestureContext context) async {
     if (_mapboxMap == null) return;
+    final point = context.point;
+    final coordinates = point.coordinates;
     
-    final tappedPoint = context.point;
-    print('Map tapped at point: ${tappedPoint.coordinates}');
+    print('Map tapped at: ${coordinates.lat}, ${coordinates.lng}');
     
-    // If selecting custom start location, handle that first
+    // Handle custom location selection (tap anywhere on map)
     if (_isSelectingStartLocation) {
       setState(() {
         _customStartLocation = geo.Position(
-          latitude: tappedPoint.coordinates.lat.toDouble(),
-          longitude: tappedPoint.coordinates.lng.toDouble(),
+          latitude: coordinates.lat.toDouble(),
+          longitude: coordinates.lng.toDouble(),
           timestamp: DateTime.now(),
           accuracy: 0,
           altitude: 0,
-          altitudeAccuracy: 0,
           heading: 0,
-          headingAccuracy: 0,
           speed: 0,
           speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
         );
         _isSelectingStartLocation = false;
+        _locationMode = LocationMode.customLocation;
       });
       
-      // Add marker for custom location
       await _addCustomLocationMarker(
-        tappedPoint.coordinates.lat.toDouble(),
-        tappedPoint.coordinates.lng.toDouble(),
+        coordinates.lat.toDouble(),
+        coordinates.lng.toDouble(),
       );
       
       _showMessage('Lokasi awal dipilih', AppColors.primary);
       return;
     }
     
+    // Handle node selection (tap on node marker)
+    if (_isSelectingNodeLocation) {
+      final screenCoordinate = await _mapboxMap!.pixelForCoordinate(point);
+      
+      try {
+        final features = await _mapboxMap!.queryRenderedFeatures(
+          RenderedQueryGeometry.fromScreenCoordinate(screenCoordinate),
+          RenderedQueryOptions(
+            layerIds: [
+              ..._levelsWithMarkers.map((level) => 'nodes-symbols-$level'),
+            ],
+          ),
+        );
+        
+        if (features.isNotEmpty) {
+          final feature = features.first;
+          
+          if (feature != null) {
+            final featureData = feature.queriedFeature.feature;
+            final properties = featureData['properties'];
+            
+            if (properties != null && properties is Map) {
+              final nodeId = properties['id'];
+              final node = _navigationService.nodes[nodeId];
+              
+              if (node != null) {
+                setState(() {
+                  _customStartLocation = geo.Position(
+                    latitude: node.latitude,
+                    longitude: node.longitude,
+                    timestamp: DateTime.now(),
+                    accuracy: 0,
+                    altitude: 0,
+                    heading: 0,
+                    speed: 0,
+                    speedAccuracy: 0,
+                    altitudeAccuracy: 0,
+                    headingAccuracy: 0,
+                  );
+                  _isSelectingNodeLocation = false;
+                  _locationMode = LocationMode.customLocation;
+                });
+                
+                await _addCustomLocationMarker(node.latitude, node.longitude);
+                _showMessage('Lokasi awal dipilih: ${node.name}', AppColors.primary);
+                return;
+              }
+            }
+          }
+        }
+        
+        // If no node was tapped, show message
+        _showMessage('Tap pada node (marker) untuk memilih lokasi awal', Colors.orange);
+      } catch (e) {
+        print('Error querying features for node selection: $e');
+      }
+      return;
+    }
+    
+    // Normal tap handling (show node/feature info)
+    await _handleFeatureTap(point);
+  }
+
+  // New method to handle normal feature taps
+  Future<void> _handleFeatureTap(Point tappedPoint) async {
+    if (_mapboxMap == null) return;
+
     // Query rendered features at tap location using screen coordinate
     try {
       // Convert the tapped geographical point to screen coordinate
@@ -2702,15 +2840,15 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         data: json.encode(markerGeoJson),
       ));
       
-      // Add circle layer (2D mode - VIEWPORT alignment)
+      // Add circle layer with improved styling
       await _mapboxMap!.style.addLayer(CircleLayer(
         id: 'custom-location-layer',
         sourceId: 'custom-location-source',
-        circleRadius: 20.0, // Largest for custom location marker
-        circleColor: Colors.green.value,
-        circleStrokeWidth: 7.0, // Thickest stroke for emphasis
-        circleStrokeColor: Colors.white.value,
-        circleOpacity: 1.0, // Full opacity
+        circleRadius: 12.0, // Smaller radius
+        circleColor: 0xFF4CAF50, // Vibrant green
+        circleStrokeWidth: 3.0, // Thinner stroke
+        circleStrokeColor: 0xFFFFFFFF, // White border
+        circleOpacity: 0.9, // Slight transparency
         circlePitchAlignment: CirclePitchAlignment.VIEWPORT, // 2D mode
         circleSortKey: 1000.0, // Highest priority, above all other markers
       ));
@@ -3288,12 +3426,53 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           // Custom Location option
           InkWell(
             onTap: () {
-              setState(() {
-                _locationMode = LocationMode.customLocation;
-                _isSelectingStartLocation = true;
-                _showLocationModePanel = false;
-              });
-              _showMessage('Tap pada peta untuk memilih lokasi awal', Colors.orange);
+              // Show options: tap on map or select from nodes
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text('Pilih Lokasi Awal'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        leading: Icon(Icons.touch_app, color: Colors.orange),
+                        title: Text('Tap pada Peta'),
+                        subtitle: Text('Pilih lokasi bebas di peta'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() {
+                            _locationMode = LocationMode.customLocation;
+                            _isSelectingStartLocation = true;
+                            _showLocationModePanel = false;
+                          });
+                          _showMessage('Tap pada peta untuk memilih lokasi awal', AppColors.primary);
+                        },
+                      ),
+                      Divider(),
+                      ListTile(
+                        leading: Icon(Icons.location_on, color: Colors.blue),
+                        title: Text('Pilih dari Node'),
+                        subtitle: Text('Tap node di peta'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() {
+                            _locationMode = LocationMode.customLocation;
+                            _isSelectingNodeLocation = true;
+                            _showLocationModePanel = false;
+                          });
+                          _showMessage('Tap pada node di peta untuk memilih lokasi awal', AppColors.primary);
+                        },
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Batal'),
+                    ),
+                  ],
+                ),
+              );
             },
             child: Container(
               padding: const EdgeInsets.all(16),
@@ -3316,7 +3495,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                     color: _locationMode == LocationMode.customLocation
                         ? Colors.orange
                         : Colors.grey,
-                    size: 28,
+                    size: 32,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -3324,20 +3503,20 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Lokasi Custom',
+                          'Custom Location',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
                             color: _locationMode == LocationMode.customLocation
                                 ? Colors.orange
-                                : Colors.black87,
+                                : Colors.black,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           _customStartLocation != null
-                              ? 'Lokasi dipilih: ${_customStartLocation!.latitude.toStringAsFixed(6)}, ${_customStartLocation!.longitude.toStringAsFixed(6)}'
-                              : 'Tap peta untuk pilih lokasi (untuk testing)',
+                              ? 'Lokasi dipilih: ${_customStartLocation!.latitude.toStringAsFixed(5)}, ${_customStartLocation!.longitude.toStringAsFixed(5)}'
+                              : 'Pilih dari peta atau node',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey[600],
@@ -3351,6 +3530,76 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNodeSelectionDialog() {
+    // Get all nodes and sort by name
+    final nodes = _navigationService.nodes.values.toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Pilih Node Awal'),
+        content: Container(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: nodes.length,
+            itemBuilder: (context, index) {
+              final node = nodes[index];
+              return ListTile(
+                leading: Icon(
+                  node.name.contains('STUPA') ? Icons.account_balance : Icons.stairs,
+                  color: node.name.contains('STUPA') ? Colors.orange : Colors.green,
+                ),
+                title: Text(node.name),
+                subtitle: Text('Level ${node.level} • ${node.latitude.toStringAsFixed(5)}, ${node.longitude.toStringAsFixed(5)}'),
+                onTap: () {
+                  setState(() {
+                    _locationMode = LocationMode.customLocation;
+                    _customStartLocation = geo.Position(
+                      latitude: node.latitude,
+                      longitude: node.longitude,
+                      timestamp: DateTime.now(),
+                      accuracy: 0,
+                      altitude: 0,
+                      heading: 0,
+                      speed: 0,
+                      speedAccuracy: 0,
+                      altitudeAccuracy: 0,
+                      headingAccuracy: 0,
+                    );
+                    _showLocationModePanel = false;
+                  });
+                  
+                  // Add marker for selected node
+                  _addCustomLocationMarker(node.latitude, node.longitude);
+                  
+                  // Move camera to selected node
+                  _mapboxMap?.flyTo(
+                    CameraOptions(
+                      center: Point(coordinates: Position(node.longitude, node.latitude)),
+                      zoom: 18.0,
+                    ),
+                    MapAnimationOptions(duration: 1000),
+                  );
+                  
+                  Navigator.pop(context);
+                  _showMessage('Lokasi awal dipilih: ${node.name}', AppColors.primary);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Batal'),
           ),
         ],
       ),
@@ -3461,6 +3710,149 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     }
   }
 
+  void _calibrateBarometer() {
+    if (!_isBarometerAvailable) {
+      _showMessage('Barometer not available', Colors.red);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.speed, color: Colors.deepOrange),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Calibrate Barometer',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Current altitude: ${_currentAltitude.toStringAsFixed(1)}m',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Choose calibration method:',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 16),
+                
+                // Auto Borobudur option
+                InkWell(
+                  onTap: () {
+                    _barometerService.calibrateForBorobudur();
+                    _showMessage('Barometer calibrated for Borobudur (265m)', AppColors.primary);
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary, width: 2),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.temple_buddhist, color: AppColors.primary, size: 32),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Auto Borobudur',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Calibrate for Candi Borobudur (265m mdpl)',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                SizedBox(height: 12),
+                
+                // Current location option
+                InkWell(
+                  onTap: () {
+                    _barometerService.calibrateHere();
+                    _showMessage('Barometer calibrated at current location', AppColors.primary);
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green, width: 2),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.my_location, color: Colors.green, size: 32),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Current Location',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Calibrate at your current location',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3508,6 +3900,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                   break;
                 case 'level_filter':
                   _showLevelFilterDialog();
+                  break;
+                case 'calibrate_barometer':
+                  _calibrateBarometer();
                   break;
               }
             },
@@ -3582,6 +3977,18 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
+              
+              // Calibrate Barometer (only if barometer available)
+              if (_isBarometerAvailable)
+                PopupMenuItem(
+                  value: 'calibrate_barometer',
+                  child: ListTile(
+                    leading: Icon(Icons.speed, color: Colors.deepOrange),
+                    title: Text('Calibrate Barometer'),
+                    subtitle: Text('Set reference altitude'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
             ],
           ),
           
@@ -3663,23 +4070,45 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                   ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Icon(Icons.layers, color: AppColors.primary),
+                    Icon(Icons.layers, color: AppColors.primary, size: 20),
                     const SizedBox(height: 4),
                     Text(
                       'Level $_currentTempleLevel',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
+                        fontSize: 14,
                         color: AppColors.primary,
                       ),
                     ),
-                    Text(
-                      '${_currentAltitude.toStringAsFixed(1)}m',
-                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Ketinggian: ',
+                          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                        ),
+                        Text(
+                          '${_currentAltitude.toStringAsFixed(1)}m',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87),
+                        ),
+                      ],
                     ),
-                    Text(
-                      'relatif',
-                      style: TextStyle(fontSize: 8, color: Colors.grey[400], fontStyle: FontStyle.italic),
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Pressure: ',
+                          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                        ),
+                        Text(
+                          '${_currentPressure.toStringAsFixed(1)} hPa',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -3731,6 +4160,50 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                       onPressed: () {
                         setState(() {
                           _isSelectingStartLocation = false;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          
+          // Node selection mode indicator
+          if (_isSelectingNodeLocation)
+            Positioned(
+              top: 80,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.location_on, color: Colors.white),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Tap pada node (marker) untuk memilih lokasi awal',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.white),
+                      onPressed: () {
+                        setState(() {
+                          _isSelectingNodeLocation = false;
                         });
                       },
                     ),
