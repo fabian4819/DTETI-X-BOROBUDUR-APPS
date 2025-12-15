@@ -79,9 +79,14 @@ class GraphGeometry {
   bool get isPoint => type == 'Point';
   bool get isLineString => type == 'LineString';
 
-  List<double>? get pointCoordinates => isPoint ? List<double>.from(coordinates) : null;
+  List<double>? get pointCoordinates => isPoint 
+      ? (coordinates as List).map<double>((e) => (e as num).toDouble()).toList()
+      : null;
+      
   List<List<double>>? get lineCoordinates => isLineString 
-      ? (coordinates as List).map<List<double>>((coord) => List<double>.from(coord)).toList()
+      ? (coordinates as List).map<List<double>>((coord) => 
+          (coord as List).map<double>((e) => (e as num).toDouble()).toList()
+        ).toList()
       : null;
 }
 

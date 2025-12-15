@@ -95,13 +95,13 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   NavigationUpdate? _currentNavigationUpdate;
   bool? _hasLocationPermission;
 
-  // 3D Settings
+  // 3D Settings (matched with bolobudur-app)
   String lightPreset = 'day';
   String theme = 'default';
-  double cameraPitch = 60.0; // 3D tilt angle
-  double cameraZoom = 18.0;
+  double cameraPitch = 0.0; // Top-down view (like bolobudur-app)
+  double cameraZoom = 17.0; // Zoom level from bolobudur-app
   double cameraBearing = 0.0;
-  bool _show3DBuildings = true; // Toggle for 3D building visualization
+  bool _show3DBuildings = false; // Disabled to match bolobudur-app (flat 2D map)
 
   // Borobudur center coordinates
   static const double borobudurLat = -7.607874;
@@ -348,6 +348,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       // Enable 3D building visualization based on barometer
       await _enable3DBuildingVisualization();
       
+      // Add edge lines (path network) - before markers so they appear below
+      await _addEdgeLines();
+      
       // Add point annotations for nodes and features
       await _addNodeMarkers();
       await _addFeatureMarkers();
@@ -499,7 +502,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           fillExtrusionColor: colorInt,
           fillExtrusionHeight: levelConfig.maxAltitude,
           fillExtrusionBase: levelConfig.minAltitude,
-          fillExtrusionOpacity: 0.0, // DISABLED - buildings invisible for testing
+          fillExtrusionOpacity: 0.0, // DISABLED - buildings invisible to match bolobudur-app
         ));
       }
       
@@ -702,28 +705,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     }
   }
 
-  /// Get icon name based on node name/type
-  String _getNodeIcon(TempleNode node) {
-    final name = node.name.toUpperCase();
-    
-    if (name.contains('STUPA')) {
-      return '🛕'; // Buddhist temple/stupa
-    } else if (name.contains('TANGGA')) {
-      return '🪜'; // Ladder/stairs
-    } else if (name.contains('PINTU') || name.contains('GATE')) {
-      return '🚪'; // Door/gate
-    } else if (name.contains('RELIEF')) {
-      return '🗿'; // Stone carving
-    } else if (name.contains('BUDDHA') || name.contains('PATUNG')) {
-      return '🧘'; // Buddha statue
-    } else if (name.contains('GALLERY') || name.contains('GALERI')) {
-      return '🖼️'; // Gallery/art
-    } else if (name.contains('TOWER') || name.contains('MENARA')) {
-      return '🗼'; // Tower
-    } else {
-      return '📍'; // Default location pin
-    }
-  }
+
 
   Future<void> _addNodeMarkers() async {
     if (_mapboxMap == null) return;
@@ -731,22 +713,27 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     try {
       final nodes = _navigationService.nodes.values.toList();
       
-      // Group nodes by level for better organization
-      final nodesByLevel = <int, List<TempleNode>>{};
+      // Group nodes by level - SHOW ALL NODES (no filter)
+      final Map<int, List<TempleNode>> nodesByLevel = {};
       int skippedCount = 0;
       List<String> skippedNames = [];
       List<String> acceptedNames = [];
       
       for (final node in nodes) {
-        // Filter: Only show nodes with "STUPA" or "TANGGA" in name
-        // Exclude generic names like "lantai1_12", "level_3", etc.
-        final nodeName = node.name.toUpperCase();
-        final hasStupa = nodeName.contains('STUPA');
-        final hasTangga = nodeName.contains('TANGGA');
+        final level = node.level;
+        final nameUpper = node.name.toUpperCase();
         
-        if (hasStupa || hasTangga) {
-          nodesByLevel.putIfAbsent(node.level, () => []).add(node);
-          if (acceptedNames.length < 15) {
+        // FILTER: Only show TANGGA and numbered STUPA nodes (STUPA1, STUPA2, STUPA3)
+        // Hide: generic nodes (LANTAI1_2, etc.) and DASAR_STUPA
+        final hasTangga = nameUpper.contains('TANGGA');
+        final hasDasarStupa = nameUpper.contains('DASAR_STUPA') || nameUpper.contains('DASAR STUPA');
+        final hasNumberedStupa = nameUpper.contains('STUPA1') || 
+                                  nameUpper.contains('STUPA2') || 
+                                  nameUpper.contains('STUPA3');
+        
+        if (hasTangga || hasNumberedStupa) {
+          nodesByLevel.putIfAbsent(level, () => []).add(node);
+          if (acceptedNames.length < 10) {
             acceptedNames.add(node.name);
           }
         } else {
@@ -766,10 +753,10 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       print('🔍 DEBUG: Total nodes loaded: ${nodes.length}');
       print('🔍 DEBUG: Filtered nodes by level: ${nodesByLevel.map((k, v) => MapEntry(k, v.length))}');
       int filteredCount = nodesByLevel.values.fold(0, (sum, list) => sum + list.length);
-      print('🔍 DEBUG: Total filtered markers (STUPA/TANGGA only): $filteredCount');
-      print('🔍 DEBUG: Skipped $skippedCount nodes');
-      print('🔍 DEBUG: Sample skipped names: ${skippedNames.join(", ")}');
-      print('🔍 DEBUG: Sample ACCEPTED names: ${acceptedNames.join(", ")}');
+      print('🔍 DEBUG: Total markers (TANGGA + STUPA1/2/3 only): $filteredCount');
+      print('🔍 DEBUG: Skipped $skippedCount nodes (including DASAR_STUPA)');
+      print('🔍 DEBUG: Sample displayed nodes: ${acceptedNames.join(", ")}');
+      print('🔍 DEBUG: Sample skipped nodes: ${skippedNames.join(", ")}');
       
       // Add nodes as GeoJSON sources with circle layers per level
       for (final level in nodesByLevel.keys) {
@@ -782,9 +769,6 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         
         // Create GeoJSON features for this level (2D mode - no altitude)
         final features = levelNodes.map((node) {
-          final color = _getNodeColor(node);
-          final icon = _getNodeIcon(node);
-          
           return '''
           {
             "type": "Feature",
@@ -796,9 +780,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
               "id": ${node.id},
               "name": "${node.name}",
               "type": "${node.type}",
-              "level": ${node.level},
-              "color": "${color.value}",
-              "icon": "$icon"
+              "level": ${node.level}
             }
           }
           ''';
@@ -1052,6 +1034,76 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       
     } catch (e) {
       print('Error adding external facilities markers: $e');
+    }
+  }
+
+  Future<void> _addEdgeLines() async {
+    if (_mapboxMap == null) return;
+
+    try {
+      // Get edges from navigation service
+      final edges = _navigationService.edges;
+      
+      if (edges.isEmpty) {
+        print('No edges loaded from API');
+        return;
+      }
+
+      // Create GeoJSON LineString features for all edges
+      final edgeFeatures = edges.map((edge) {
+        // Get source and target nodes
+        final sourceNode = _navigationService.nodes[edge.sourceId];
+        final targetNode = _navigationService.nodes[edge.targetId];
+        
+        if (sourceNode == null || targetNode == null) {
+          return null;
+        }
+
+        return '''
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [${sourceNode.longitude}, ${sourceNode.latitude}],
+              [${targetNode.longitude}, ${targetNode.latitude}]
+            ]
+          },
+          "properties": {
+            "id": ${edge.id},
+            "source": ${edge.sourceId},
+            "target": ${edge.targetId}
+          }
+        }
+        ''';
+      }).where((feature) => feature != null).join(',');
+
+      final edgesGeoJson = '''
+      {
+        "type": "FeatureCollection",
+        "features": [$edgeFeatures]
+      }
+      ''';
+
+      // Add source for edges
+      await _mapboxMap!.style.addSource(GeoJsonSource(
+        id: 'temple-edges-source',
+        data: edgesGeoJson,
+      ));
+
+      // Add line layer for edges (like bolobudur-app)
+      await _mapboxMap!.style.addLayer(LineLayer(
+        id: 'temple-edges-layer',
+        sourceId: 'temple-edges-source',
+        lineColor: 0xFFBDBDBD, // Light gray color
+        lineWidth: 2.0,
+        lineOpacity: 0.6,
+      ));
+
+      print('✅ Added ${edges.length} edge lines to map');
+      
+    } catch (e) {
+      print('Error adding edge lines: $e');
     }
   }
 
@@ -2563,45 +2615,25 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     if (_mapboxMap == null) return;
 
     try {
-      // Show all markers but with different opacity based on level
-      // This ensures STUPA markers (Level 9) are always visible
+      // BOLOBUDUR-APP STYLE: Show all markers at full opacity at all times
+      // No level-based filtering - all markers are always visible
       
-      // Only update levels that have markers
       for (final level in _levelsWithMarkers) {
         final circleLayerId = 'nodes-circles-$level';
         
-        // Show current level with full opacity, other levels with reduced opacity
-        final levelDiff = (level - _currentTempleLevel).abs();
-        String visibility = 'visible'; // Always visible now
-        double opacity = 0.9;
-        
-        if (levelDiff == 0) {
-          // Current level - full visibility
-          opacity = 1.0;
-        } else if (levelDiff <= 2) {
-          // Close levels (1-2 levels away) - medium opacity
-          opacity = 0.6;
-        } else {
-          // Far levels - low opacity but still visible
-          // This ensures Level 9 (STUPA) is visible even from Level 1
-          opacity = 0.3;
-        }
-        
         try {
-          // Update circle layer visibility and opacity
+          // All markers always visible with full opacity
           await _mapboxMap!.style.setStyleLayerProperty(
             circleLayerId,
             'visibility',
-            visibility,
+            'visible',
           );
           
-          if (visibility == 'visible') {
-            await _mapboxMap!.style.setStyleLayerProperty(
-              circleLayerId,
-              'circle-opacity',
-              opacity,
-            );
-          }
+          await _mapboxMap!.style.setStyleLayerProperty(
+            circleLayerId,
+            'circle-opacity',
+            1.0, // Full opacity for all markers
+          );
         } catch (e) {
           // Layer might not exist yet
           debugPrint('Could not update markers for level $level: $e');

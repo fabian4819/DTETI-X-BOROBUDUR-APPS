@@ -26,7 +26,7 @@ class ApiService {
 
   // Graph endpoint - get nodes and edges for temple mapping
   Future<GraphResponse?> getTempleGraph() async {
-    final uri = Uri.parse('$_baseUrl/v1/temples/graph');
+    final uri = Uri.parse('$_baseUrl/v2/temples/graph');
 
     debugPrint('Fetching temple graph from: $uri');
     final client = _createHttpClient();

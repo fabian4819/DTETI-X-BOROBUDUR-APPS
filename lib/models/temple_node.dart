@@ -77,13 +77,35 @@ class TempleNode {
       return int.tryParse(levelMatch.group(1) ?? '1') ?? 1;
     }
 
-    // Check for stupa (typically on upper levels)
-    if (name.toUpperCase().contains('STUPA')) {
-      // Use altitude if available for more precise level detection
+    // Check for stupa levels - USER DEFINED MAPPING
+    final nameUpper = name.toUpperCase();
+    
+    // DASAR_STUPA = Level 5
+    if (nameUpper.contains('DASAR_STUPA') || nameUpper.contains('DASAR STUPA')) {
+      return 5;
+    }
+    
+    // STUPA1 = Level 6
+    if (nameUpper.contains('STUPA1')) {
+      return 6;
+    }
+    
+    // STUPA2 = Level 7
+    if (nameUpper.contains('STUPA2')) {
+      return 7;
+    }
+    
+    // STUPA3 = Level 8
+    if (nameUpper.contains('STUPA3')) {
+      return 8;
+    }
+    
+    // Generic STUPA (fallback) - use altitude if available
+    if (nameUpper.contains('STUPA')) {
       if (altitude != null) {
         return _calculateLevelFromAltitude(altitude!);
       }
-      return 9; // Default to top level for stupas
+      return 6; // Default to level 6 for generic stupa
     }
 
     // Use altitude if available for precise level detection

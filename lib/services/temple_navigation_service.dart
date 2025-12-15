@@ -62,10 +62,16 @@ class TempleNavigationService {
     _isLoadingFeatures = true;
     
     try {
+      // Clear cache to force fresh load from v2 API
+      _apiService.clearCache();
+      debugPrint('🗑️ Cleared API cache');
+      
       // Load graph data (nodes and edges)
       final graphResponse = await _apiService.getTempleGraphCached();
       if (graphResponse != null && graphResponse.code == 200) {
         await _parseTempleGraph(graphResponse.data);
+      } else {
+        debugPrint('❌ Failed to load graph: ${graphResponse?.message}');
       }
       
       // Load features data (stupas, etc.)
@@ -90,32 +96,42 @@ class TempleNavigationService {
     _adjacencyList.clear();
     _edges.clear();
 
+    debugPrint('🔍 Parsing graph data with ${graphData.features.length} features');
+
     // Parse nodes (Points)
+    int nodeCount = 0;
     for (final feature in graphData.features) {
       if (feature.geometry.isPoint && feature.properties.id != null) {
         final node = TempleNode.fromApiFeature(feature);
         newNodes[node.id] = node;
+        nodeCount++;
       }
     }
+    debugPrint('✅ Parsed $nodeCount nodes');
 
     // Parse edges (LineStrings)
+    int edgeCount = 0;
     for (final feature in graphData.features) {
       if (feature.geometry.isLineString && 
           feature.properties.source != null && 
           feature.properties.target != null) {
         final edge = TempleEdge.fromApiFeature(feature);
         newEdges.add(edge);
+        edgeCount++;
         
         // Build adjacency list
         newAdjacencyList.putIfAbsent(edge.sourceId, () => []).add(edge.targetId);
         newAdjacencyList.putIfAbsent(edge.targetId, () => []).add(edge.sourceId);
       }
     }
+    debugPrint('✅ Parsed $edgeCount edges');
 
     // Use parsed data
     _nodes = newNodes;
     _adjacencyList = newAdjacencyList;
     _edges = newEdges;
+    
+    debugPrint('📊 Total loaded: ${_nodes.length} nodes, ${_edges.length} edges');
   }
 
   // Load temple features
