@@ -124,7 +124,14 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
 
   // Track which levels have markers
   final Set<int> _levelsWithMarkers = {};
-
+  
+  // Multi-stage navigation state
+  int _navigationStage = 0; // 0 = no navigation, 1 = to entrance, 2 = inside temple
+  TempleNode? _finalDestinationNode;
+  TempleFeature? _finalDestinationFeature;
+  static const int ENTRANCE_GATE_ID = 128; // Pintu Akses Masuk Candi
+  static const String ENTRY_NODE_ID = 'lantai1_tangga_21'; // Entry point inside temple
+  
   // Animation
   late AnimationController _pulseController;
 
@@ -237,7 +244,17 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     _levelSubscription?.cancel();
     _pulseController.dispose();
     _flutterTts.stop();
-    _navigationService.dispose();
+    
+    // Clear navigation state to prevent duplicate cards on return
+    destinationNode = null;
+    destinationFeature = null;
+    startNode = null;
+    startFeature = null;
+    showNavigationPreview = false;
+    isNavigating = false;
+    _navigationStage = 0;
+    _finalDestinationNode = null;
+    _finalDestinationFeature = null;
     
     // Don't dispose barometer and level detection services as they are singletons
     // and should keep running even when navigating away from this screen
@@ -369,14 +386,28 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
 
       print('✅ Location permission granted');
       
-      // Get initial position for testing
-      _currentPosition = _navigationService.getCurrentLocationForTesting();
-      print('Initial test position: $_currentPosition');
-
       // Start location tracking
       print('Starting location tracking service...');
       await _navigationService.startLocationTracking();
-      print('✅ Location tracking service started');
+      
+      // Get current position immediately (don't wait for stream)
+      print('📍 Getting current GPS position...');
+      try {
+        final position = await geo.Geolocator.getCurrentPosition(
+          desiredAccuracy: geo.LocationAccuracy.high,
+          timeLimit: Duration(seconds: 5),
+        );
+        _currentPosition = position;
+        print('✅ Got GPS position:');
+        print('   Lat: ${_currentPosition?.latitude}');
+        print('   Lon: ${_currentPosition?.longitude}');
+        print('   Accuracy: ${_currentPosition?.accuracy}m');
+      } catch (e) {
+        print('⚠️ Error getting GPS position: $e');
+        print('   Using test location as fallback');
+        _currentPosition = _navigationService.getCurrentLocationForTesting();
+        print('   Test location: ${_currentPosition?.latitude}, ${_currentPosition?.longitude}');
+      }
 
       // Subscribe to position stream
       _positionSubscription = _navigationService.positionStream?.listen((position) {
@@ -396,6 +427,11 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           
           // Show smart calibration prompt if needed
           _checkAndShowCalibrationPrompt();
+          
+          // Check for multi-stage navigation stage switching
+          if (_navigationStage == 1 && isNavigating) {
+            _checkStageTransition(position);
+          }
         }
       });
       
@@ -2150,40 +2186,115 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         return;
       }
       currentPos = _customStartLocation;
+      print('🗺️ Using CUSTOM start location: ${currentPos?.latitude}, ${currentPos?.longitude}');
     } else {
       currentPos = _currentPosition;
+      print('🗺️ Using CURRENT GPS location: ${currentPos?.latitude}, ${currentPos?.longitude}');
       if (currentPos == null) {
-        _showMessage('Tidak dapat menemukan lokasi Anda', Colors.orange);
-        return;
+        print('❌ Current position is NULL - GPS not ready');
+        _showMessage('Menunggu sinyal GPS... Mohon tunggu sebentar', Colors.orange);
+        
+        // Try to wait a bit for GPS
+        await Future.delayed(Duration(milliseconds: 500));
+        currentPos = _currentPosition;
+        
+        if (currentPos == null) {
+          _showMessage('Tidak dapat menemukan lokasi Anda. Pastikan GPS aktif.', Colors.red);
+          return;
+        }
       }
     }
     
     // Get destination coordinates
-    double destLat, destLon;
-    if (destinationNode != null) {
-      destLat = destinationNode!.latitude;
-      destLon = destinationNode!.longitude;
-    } else if (destinationFeature != null) {
-      destLat = destinationFeature!.latitude;
-      destLon = destinationFeature!.longitude;
-    } else {
-      return;
-    }
+  double destLat, destLon;
+  if (destinationNode != null) {
+    destLat = destinationNode!.latitude;
+    destLon = destinationNode!.longitude;
+  } else if (destinationFeature != null) {
+    destLat = destinationFeature!.latitude;
+    destLon = destinationFeature!.longitude;
+  } else {
+    return;
+  }
+  
+  if (currentPos == null) return;
+  
+  // Check if this is a multi-stage navigation scenario
+  // (user outside temple, destination inside temple)
+  final isUserOutside = !_isPointInsideBorobudurComplex(currentPos.latitude, currentPos.longitude);
+  final isDestinationInside = _isPointInsideBorobudurComplex(destLat, destLon);
+  final isDummyFacility = destinationFeature != null && destinationFeature!.id >= 101 && destinationFeature!.id <= 200;
+  
+  if (isUserOutside && isDestinationInside && !isDummyFacility) {
+    // MULTI-STAGE NAVIGATION: Outside → Entrance → Inside
+    print('🎯 MULTI-STAGE NAVIGATION DETECTED');
+    print('   User is OUTSIDE temple, destination is INSIDE');
+    print('   Stage 1: Navigate to Entrance Gate (ID: $ENTRANCE_GATE_ID)');
+    print('   Stage 2: Navigate from $ENTRY_NODE_ID to final destination');
     
-    if (currentPos == null) return;
+    // Save final destination
+    _finalDestinationNode = destinationNode;
+    _finalDestinationFeature = destinationFeature;
+    _navigationStage = 1;
     
-    // Try to get route data from Borobudur API if destination is a node
-    Map<String, dynamic>? routeData;
+    // Get entrance gate feature
+    final entranceGate = BorobudurFacilitiesData.getFacilities()
+        .firstWhere((f) => f.id == ENTRANCE_GATE_ID);
+    
+    // Set entrance as current destination for Stage 1
+    destinationFeature = entranceGate;
+    destinationNode = null;
+    destLat = entranceGate.latitude;
+    destLon = entranceGate.longitude;
+    
+    print('   → Stage 1 destination set to: ${entranceGate.name}');
+  } else {
+    // Normal single-stage navigation
+    _navigationStage = 0;
+    _finalDestinationNode = null;
+    _finalDestinationFeature = null;
+  }
+  
+  // Try to get route data from Borobudur API ONLY if destination is inside Borobudur complex
+  Map<String, dynamic>? routeData;
+  
+  // Check if destination is inside Borobudur complex
+  final isDestinationInsideBorobudur = _isPointInsideBorobudurComplex(destLat, destLon);
+  
+  // isDummyFacility already declared above at line 2193
+  
+  if (isDestinationInsideBorobudur && !isDummyFacility) {
+    // Destination is inside Borobudur AND not a dummy facility - try backend API
     if (destinationNode != null) {
+      print('🎯 Destination NODE inside Borobudur: ${destinationNode!.name} (ID: ${destinationNode!.id})');
+      print('   Fetching route from Borobudur Backend API...');
       routeData = await _fetchBorobudurRoute(
         currentPos.latitude,
         currentPos.longitude,
         destinationNode!.id,
       );
+    } else if (destinationFeature != null) {
+      print('🎯 Destination FEATURE inside Borobudur: ${destinationFeature!.name} (ID: ${destinationFeature!.id})');
+      print('   Fetching route from Borobudur Backend API...');
+      routeData = await _fetchBorobudurRoute(
+        currentPos.latitude,
+        currentPos.longitude,
+        destinationFeature!.id,
+      );
     }
-    
-    double distance;
-    int durationSeconds;
+  } else {
+    // Destination is OUTSIDE Borobudur OR is a dummy facility - skip backend API, use Mapbox directly
+    if (isDummyFacility) {
+      print('🗺️ Destination is DUMMY FACILITY (ID: ${destinationFeature!.id})');
+      print('   Skipping Backend API, using Mapbox Directions for dummy facilities');
+    } else {
+      print('🗺️ Destination is OUTSIDE Borobudur complex');
+      print('   Using Mapbox Directions API for routing');
+    }
+  }
+  
+  double distance;
+  int durationSeconds;
     
     // Use Borobudur API data if available, otherwise calculate
     if (routeData != null && routeData['properties'] != null) {
@@ -2212,23 +2323,61 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       showNavigationPreview = true;
     });
     
-    // Draw route line on map (pass targetNode if destination is a node)
-    await _drawRouteLine(
-      currentPos.latitude,
-      currentPos.longitude,
-      destLat,
-      destLon,
-      targetNode: destinationNode,
-    );
+    // Draw route line on map (pass targetNode if destination is a node, targetFeature if destination is a feature)
+  await _drawRouteLine(
+    currentPos.latitude,
+    currentPos.longitude,
+    destLat,
+    destLon,
+    targetNode: destinationNode,
+    targetFeature: destinationFeature,
+  );
+  
+  // If multi-stage navigation, also draw Stage 2 route preview
+  if (_navigationStage == 1 && (_finalDestinationNode != null || _finalDestinationFeature != null)) {
+    print('📍 Drawing Stage 2 route preview...');
+    print('   Final destination: ${_finalDestinationNode?.name ?? _finalDestinationFeature?.name}');
     
-    // Adjust camera to show entire route
-    await _fitCameraToRoute(
-      currentPos.latitude,
-      currentPos.longitude,
-      destLat,
-      destLon,
-    );
+    // Get entry node location
+    final entryNode = _navigationService.nodes[ENTRY_NODE_ID];
+    print('   Entry node ($ENTRY_NODE_ID): ${entryNode != null ? "FOUND" : "NOT FOUND"}');
+    
+    if (entryNode != null) {
+      print('   Entry node location: (${entryNode.latitude}, ${entryNode.longitude})');
+      
+      // Get final destination coordinates
+      double finalLat, finalLon;
+      if (_finalDestinationNode != null) {
+        finalLat = _finalDestinationNode!.latitude;
+        finalLon = _finalDestinationNode!.longitude;
+        print('   Final destination (Node): ($finalLat, $finalLon)');
+      } else {
+        finalLat = _finalDestinationFeature!.latitude;
+        finalLon = _finalDestinationFeature!.longitude;
+        print('   Final destination (Feature): ($finalLat, $finalLon)');
+      }
+      
+      await _drawStage2RoutePreview(
+        entryNode.latitude,
+        entryNode.longitude,
+        finalLat,
+        finalLon,
+        targetNode: _finalDestinationNode,
+        targetFeature: _finalDestinationFeature,
+      );
+    } else {
+      print('   ❌ Cannot draw Stage 2 route: Entry node not found');
+    }
   }
+  
+  // Adjust camera to show entire route
+  await _fitCameraToRoute(
+    currentPos.latitude,
+    currentPos.longitude,
+    destLat,
+    destLon,
+  );
+}
 
   // Calculate distance between two coordinates (Haversine formula)
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -2520,6 +2669,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     double endLat, 
     double endLon, {
     TempleNode? targetNode,
+    TempleFeature? targetFeature,
   }) async {
     if (_mapboxMap == null) return;
     
@@ -2529,9 +2679,11 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         await _mapboxMap!.style.removeStyleLayer('route-layer');
         await _mapboxMap!.style.removeStyleLayer('route-layer-casing');
         await _mapboxMap!.style.removeStyleSource('route-source');
-        // Also remove dashed segment if exists
+        // Also remove dashed segments if exists
         await _mapboxMap!.style.removeStyleLayer('dashed-segment-layer');
         await _mapboxMap!.style.removeStyleSource('dashed-segment-source');
+        await _mapboxMap!.style.removeStyleLayer('start-dashed-segment-layer');
+        await _mapboxMap!.style.removeStyleSource('start-dashed-segment-source');
       } catch (e) {
         // Layer doesn't exist, ignore
       }
@@ -2539,29 +2691,66 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       Map<String, dynamic>? route;
       String routeSource = 'unknown';
       
-      // Try Borobudur Backend API first if destination is a Node
-      if (targetNode != null) {
-        print('Attempting to fetch route from Borobudur Backend (on-temple navigation)...');
-        final borobudurRoute = await _fetchBorobudurRoute(startLat, startLon, targetNode.id);
-        
-        if (borobudurRoute != null && borobudurRoute['geometry'] != null) {
-          route = borobudurRoute;
-          routeSource = 'Borobudur Backend';
+      // Check if destination is inside Borobudur complex
+      final isDestinationInsideBorobudur = _isPointInsideBorobudurComplex(endLat, endLon);
+      
+      // Check if destination is a dummy facility (ID 101-200)
+      final isDummyFacility = targetFeature != null && targetFeature.id >= 101 && targetFeature.id <= 200;
+      
+      // Try Borobudur Backend API ONLY if destination is inside Borobudur complex AND not a dummy facility
+      if (isDestinationInsideBorobudur && !isDummyFacility) {
+        if (targetNode != null) {
+          print('🗺️ Destination NODE inside Borobudur: ${targetNode.name}');
+          print('   Attempting to fetch route from Borobudur Backend API...');
+          final borobudurRoute = await _fetchBorobudurRoute(startLat, startLon, targetNode.id);
           
-          // Extract distance and duration from Borobudur API response
-          if (borobudurRoute['properties'] != null) {
-            final props = borobudurRoute['properties'];
-            if (props['distance_m'] != null) {
-              print('Borobudur API distance: ${props['distance_m']} m');
+          if (borobudurRoute != null && borobudurRoute['geometry'] != null) {
+            route = borobudurRoute;
+            routeSource = 'Borobudur Backend';
+            
+            // Extract distance and duration from Borobudur API response
+            if (borobudurRoute['properties'] != null) {
+              final props = borobudurRoute['properties'];
+              if (props['distance_m'] != null) {
+                print('Borobudur API distance: ${props['distance_m']} m');
+              }
+              if (props['duration_s'] != null) {
+                print('Borobudur API duration: ${props['duration_s']} s');
+              }
             }
-            if (props['duration_s'] != null) {
-              print('Borobudur API duration: ${props['duration_s']} s');
+          }
+        } else if (targetFeature != null) {
+          print('🗺️ Destination FEATURE inside Borobudur: ${targetFeature.name}');
+          print('   Attempting to fetch route from Borobudur Backend API...');
+          final borobudurRoute = await _fetchBorobudurRoute(startLat, startLon, targetFeature.id);
+          
+          if (borobudurRoute != null && borobudurRoute['geometry'] != null) {
+            route = borobudurRoute;
+            routeSource = 'Borobudur Backend';
+            
+            // Extract distance and duration from Borobudur API response
+            if (borobudurRoute['properties'] != null) {
+              final props = borobudurRoute['properties'];
+              if (props['distance_m'] != null) {
+                print('Borobudur API distance: ${props['distance_m']} m');
+              }
+              if (props['duration_s'] != null) {
+                print('Borobudur API duration: ${props['duration_s']} s');
+              }
             }
           }
         }
+      } else {
+        if (isDummyFacility) {
+          print('🗺️ Destination is DUMMY FACILITY (ID: ${targetFeature!.id})');
+          print('   Skipping Backend API, using Mapbox Directions');
+        } else {
+          print('🗺️ Destination is OUTSIDE Borobudur complex');
+          print('   Skipping Borobudur Backend API, will use Mapbox Directions');
+        }
       }
       
-      // Fallback to Mapbox Directions API if Borobudur API fails or not a node
+      // Fallback to Mapbox Directions API if Borobudur API fails or not a node/feature
       if (route == null) {
         print('Falling back to Mapbox Directions API...');
         route = await _fetchDirectionsRoute(startLat, startLon, endLat, endLon);
@@ -2570,34 +2759,60 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         }
       }
       
-      // Check if destination is inside Borobudur complex
-      // If yes, and we got Mapbox route (not Borobudur route), we need hybrid routing:
-      // 1. Solid line following the road (from Mapbox)
-      // 2. Dashed line from road endpoint to actual destination
-      final isDestinationInsideBorobudur = _isPointInsideBorobudurComplex(endLat, endLon);
-      final needsHybridRoute = isDestinationInsideBorobudur && routeSource == 'Mapbox Directions';
+      // Check if start and destination are inside Borobudur complex
+      final isStartInsideBorobudur = _isPointInsideBorobudurComplex(startLat, startLon);
+      // isDestinationInsideBorobudur already declared above at line 2568
+      
+      // Determine if we need hybrid routing
+      // Hybrid routing is needed when using Mapbox (not Borobudur backend) and either start or end is inside complex
+      final needsHybridRoute = routeSource == 'Mapbox Directions' && (isStartInsideBorobudur || isDestinationInsideBorobudur);
       
       Map<String, dynamic> routeGeoJson;
       Map<String, dynamic>? dashedSegmentGeoJson;
+      Map<String, dynamic>? startDashedSegmentGeoJson;
       bool isStraightLineFallback = false;
       
       if (route != null && route['geometry'] != null) {
         if (needsHybridRoute) {
-          // HYBRID ROUTE: Mapbox route + dashed line to destination
-          print('🔀 Creating HYBRID route:');
-          print('   1. Solid blue line following road (Mapbox)');
-          print('   2. Dashed red line from road end to destination inside complex');
-          
-          // Get the last coordinate from Mapbox route (end of the road)
+          // HYBRID ROUTE: May have dashed lines at start and/or end
           final routeCoords = route['geometry']['coordinates'] as List;
+          final firstRoadPoint = routeCoords.first as List;
+          final firstRoadLon = firstRoadPoint[0];
+          final firstRoadLat = firstRoadPoint[1];
           final lastRoadPoint = routeCoords.last as List;
           final lastRoadLon = lastRoadPoint[0];
           final lastRoadLat = lastRoadPoint[1];
           
-          print('   Road ends at: ($lastRoadLat, $lastRoadLon)');
-          print('   Destination: ($endLat, $endLon)');
+          print('🔀 Creating HYBRID route:');
+          if (isStartInsideBorobudur) {
+            print('   1. Dashed line from start location to road (walking path)');
+          }
+          print('   ${isStartInsideBorobudur ? '2' : '1'}. Solid blue line following road (Mapbox)');
+          if (isDestinationInsideBorobudur) {
+            print('   ${isStartInsideBorobudur ? '3' : '2'}. Dashed line from road end to destination (walking path)');
+          }
           
-          // Solid route from Mapbox (existing road)
+          // Start dashed segment (if start is inside complex)
+          if (isStartInsideBorobudur) {
+            startDashedSegmentGeoJson = {
+              'type': 'Feature',
+              'geometry': {
+                'type': 'LineString',
+                'coordinates': [
+                  [startLon, startLat],           // From actual start location
+                  [firstRoadLon, firstRoadLat],   // To beginning of road
+                ],
+              },
+              'properties': {
+                'route-color': '#FF6B6B', // Red color for off-road segment
+                'route-source': 'Walking Path (No Vehicle Access)',
+              },
+            };
+            print('   Start location: ($startLat, $startLon)');
+            print('   Road begins at: ($firstRoadLat, $firstRoadLon)');
+          }
+          
+          // Solid route from Mapbox (road)
           routeGeoJson = {
             'type': 'Feature',
             'geometry': route['geometry'],
@@ -2607,43 +2822,58 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
             },
           };
           
-          // Dashed segment from road end to destination
-          dashedSegmentGeoJson = {
-            'type': 'Feature',
-            'geometry': {
-              'type': 'LineString',
-              'coordinates': [
-                [lastRoadLon, lastRoadLat], // From end of road
-                [endLon, endLat],            // To actual destination
-              ],
-            },
-            'properties': {
-              'route-color': '#FF6B6B', // Red color for off-road segment
-              'route-source': 'Walking Path (No Vehicle Access)',
-            },
-          };
+          // End dashed segment (if destination is inside complex)
+          if (isDestinationInsideBorobudur) {
+            dashedSegmentGeoJson = {
+              'type': 'Feature',
+              'geometry': {
+                'type': 'LineString',
+                'coordinates': [
+                  [lastRoadLon, lastRoadLat], // From end of road
+                  [endLon, endLat],            // To actual destination
+                ],
+              },
+              'properties': {
+                'route-color': '#FF6B6B', // Red color for off-road segment
+                'route-source': 'Walking Path (No Vehicle Access)',
+              },
+            };
+            print('   Road ends at: ($lastRoadLat, $lastRoadLon)');
+            print('   Destination: ($endLat, $endLon)');
+          }
           
           // Show notification
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.directions_walk, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Tujuan di dalam area candi. Ikuti jalan, lalu jalan kaki (garis putus-putus).',
-                      style: TextStyle(fontSize: 14),
+          String message = '';
+          if (isStartInsideBorobudur && isDestinationInsideBorobudur) {
+            message = 'Start dan tujuan di dalam area candi. Ikuti garis putus-putus (jalan kaki) ke jalan, lalu ikuti jalan.';
+          } else if (isStartInsideBorobudur) {
+            message = 'Start di dalam area candi. Ikuti garis putus-putus (jalan kaki) ke jalan terlebih dahulu.';
+          } else if (isDestinationInsideBorobudur) {
+            message = 'Tujuan di dalam area candi. Ikuti jalan, lalu jalan kaki (garis putus-putus).';
+          }
+          
+          if (message.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.directions_walk, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: TextStyle(fontSize: 14),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                backgroundColor: Colors.orange[700],
+                duration: Duration(seconds: 5),
+                behavior: SnackBarBehavior.floating,
+                margin: EdgeInsets.only(bottom: 100, left: 16, right: 16),
               ),
-              backgroundColor: Colors.orange[700],
-              duration: Duration(seconds: 5),
-              behavior: SnackBarBehavior.floating,
-              margin: EdgeInsets.only(bottom: 100, left: 16, right: 16),
-            ),
-          );
+            );
+          }
           
         } else {
           // Normal route - all solid line
@@ -2782,41 +3012,145 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         print('Route line drawn successfully with solid line (real route from API)');
       }
       
-      // Add dashed segment if hybrid route (road + walking path)
+      // Add dashed segments for hybrid route (walking paths)
+      // End dashed segment (destination to road)
       if (dashedSegmentGeoJson != null) {
-        print('Adding dashed segment for walking path inside complex...');
-        
-        // Add source for dashed segment
         await _mapboxMap!.style.addSource(GeoJsonSource(
           id: 'dashed-segment-source',
           data: json.encode(dashedSegmentGeoJson),
         ));
         
-        // Add dashed line layer (no vehicle access)
         await _mapboxMap!.style.addLayer(LineLayer(
           id: 'dashed-segment-layer',
           sourceId: 'dashed-segment-source',
-          lineWidthExpression: [
-            'interpolate',
-            ['exponential', 1.5],
-            ['zoom'],
-            12.0, 4.0,
-            14.0, 5.0,
-            16.0, 6.0,
-            18.0, 7.0,
-            20.0, 8.0,
-          ],
+          lineWidth: 6.0,
           lineColor: 0xFFFF6B6B, // Red color for walking path
           lineCap: LineCap.ROUND,
           lineJoin: LineJoin.ROUND,
           lineOpacity: 0.8,
           lineDasharray: [2.0, 2.0], // Dashed pattern
         ));
-        print('✅ Dashed segment drawn (walking path from road to destination)');
+        print('✅ End dashed segment drawn (walking path from road to destination)');
+      }
+      
+      // Start dashed segment (start location to road)
+      if (startDashedSegmentGeoJson != null) {
+        await _mapboxMap!.style.addSource(GeoJsonSource(
+          id: 'start-dashed-segment-source',
+          data: json.encode(startDashedSegmentGeoJson),
+        ));
+        
+        await _mapboxMap!.style.addLayer(LineLayer(
+          id: 'start-dashed-segment-layer',
+          sourceId: 'start-dashed-segment-source',
+          lineWidth: 6.0,
+          lineColor: 0xFFFF6B6B, // Red color for walking path
+          lineCap: LineCap.ROUND,
+          lineJoin: LineJoin.ROUND,
+          lineOpacity: 0.8,
+          lineDasharray: [2.0, 2.0], // Dashed pattern
+        ));
+        print('✅ Start dashed segment drawn (walking path from start to road)');
       }
       
     } catch (e) {
       print('Error drawing route line: $e');
+    }
+  }
+
+  // Draw Stage 2 route preview (entrance to final destination)
+  Future<void> _drawStage2RoutePreview(
+    double startLat,
+    double startLon,
+    double endLat,
+    double endLon, {
+    TempleNode? targetNode,
+    TempleFeature? targetFeature,
+  }) async {
+    if (_mapboxMap == null) return;
+    
+    try {
+      // Remove existing Stage 2 preview layers if any
+      try {
+        await _mapboxMap!.style.removeStyleLayer('stage2-route-layer');
+        await _mapboxMap!.style.removeStyleLayer('stage2-route-layer-casing');
+        await _mapboxMap!.style.removeStyleSource('stage2-route-source');
+      } catch (e) {
+        // Layer doesn't exist, ignore
+      }
+      
+      Map<String, dynamic>? route;
+      
+      // Try to get route from backend API for Stage 2
+      if (targetNode != null) {
+        print('🗺️ Fetching Stage 2 route for NODE: ${targetNode.name} (ID: ${targetNode.id})');
+        print('   From: ($startLat, $startLon) To: ($endLat, $endLon)');
+        route = await _fetchBorobudurRoute(startLat, startLon, targetNode.id);
+        print('   Route fetched: ${route != null ? "SUCCESS" : "NULL"}');
+        if (route != null) {
+          print('   Route has geometry: ${route['geometry'] != null}');
+        }
+      } else if (targetFeature != null) {
+        print('🗺️ Fetching Stage 2 route for FEATURE: ${targetFeature.name} (ID: ${targetFeature.id})');
+        print('   From: ($startLat, $startLon) To: ($endLat, $endLon)');
+        route = await _fetchBorobudurRoute(startLat, startLon, targetFeature.id);
+        print('   Route fetched: ${route != null ? "SUCCESS" : "NULL"}');
+        if (route != null) {
+          print('   Route has geometry: ${route['geometry'] != null}');
+        }
+      }
+      
+      if (route == null || route['geometry'] == null) {
+        print('⚠️ No Stage 2 route from backend, skipping preview');
+        print('   Route is null: ${route == null}');
+        if (route != null) {
+          print('   Geometry is null: ${route['geometry'] == null}');
+          print('   Route data: $route');
+        }
+        return;
+      }
+      
+      // Create GeoJSON for Stage 2 route
+      final routeGeoJson = {
+        'type': 'Feature',
+        'geometry': route['geometry'],
+        'properties': {
+          'route-color': '#4CAF50', // Green color for Stage 2
+          'route-source': 'Stage 2 Preview',
+        },
+      };
+      
+      // Add source
+      await _mapboxMap!.style.addSource(GeoJsonSource(
+        id: 'stage2-route-source',
+        data: json.encode(routeGeoJson),
+      ));
+      
+      // Add casing layer (black border)
+      await _mapboxMap!.style.addLayer(LineLayer(
+        id: 'stage2-route-layer-casing',
+        sourceId: 'stage2-route-source',
+        lineColor: Colors.black.value,
+        lineWidth: 8.0,
+        lineCap: LineCap.ROUND,
+        lineJoin: LineJoin.ROUND,
+      ));
+      
+      // Add main route layer (green, semi-transparent)
+      await _mapboxMap!.style.addLayer(LineLayer(
+        id: 'stage2-route-layer',
+        sourceId: 'stage2-route-source',
+        lineColor: 0xFF4CAF50, // Green
+        lineWidth: 6.0,
+        lineCap: LineCap.ROUND,
+        lineJoin: LineJoin.ROUND,
+        lineOpacity: 0.7, // Semi-transparent to distinguish from Stage 1
+      ));
+      
+      print('✅ Stage 2 route preview drawn (green line)');
+      
+    } catch (e) {
+      print('Error drawing Stage 2 route preview: $e');
     }
   }
 
@@ -3168,11 +3502,11 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     }
   }
 
-  void _stopNavigation() {
+  Future<void> _stopNavigation() async {
     _navigationService.stopNavigation();
     
     // Remove route line when stopping navigation
-    _removeRouteLine();
+    await _removeRouteLine();
     
     setState(() {
       isNavigating = false;
@@ -3947,6 +4281,61 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     );
   }
 
+  /// Check if user has arrived at entrance gate and should switch to Stage 2
+  void _checkStageTransition(geo.Position position) async {
+    if (_navigationStage != 1) return;
+    
+    // Get entrance gate location
+    final entranceGate = BorobudurFacilitiesData.getFacilities()
+        .firstWhere((f) => f.id == ENTRANCE_GATE_ID);
+    
+    // Calculate distance to entrance gate
+    final distance = _calculateDistance(
+      position.latitude,
+      position.longitude,
+      entranceGate.latitude,
+      entranceGate.longitude,
+    );
+    
+    // If within 15 meters of entrance gate, switch to Stage 2
+    if (distance <= 15.0) {
+      print('🎯 STAGE TRANSITION: User arrived at entrance gate!');
+      print('   Distance to entrance: ${distance.toStringAsFixed(1)}m');
+      print('   Switching to Stage 2: Entry node → Final destination');
+      
+      // Stop current navigation
+      await _stopNavigation();
+      
+      // Get entry node
+      final entryNode = _navigationService.nodes[ENTRY_NODE_ID];
+      if (entryNode == null) {
+        print('❌ Entry node $ENTRY_NODE_ID not found!');
+        _showMessage('Error: Entry point not found', Colors.red);
+        return;
+      }
+      
+      // Set up Stage 2 navigation
+      setState(() {
+        _navigationStage = 2;
+        startNode = entryNode;
+        destinationNode = _finalDestinationNode;
+        destinationFeature = _finalDestinationFeature;
+        useCurrentLocation = false; // Use entry node as start
+      });
+      
+      // Show message
+      _showMessage(
+        'Memasuki area candi. Navigasi dilanjutkan ke ${_finalDestinationNode?.name ?? _finalDestinationFeature?.name}',
+        AppColors.primary,
+      );
+      
+      // Show navigation preview for Stage 2
+      await _showNavigationPreview();
+      
+      print('✅ Stage 2 navigation preview ready');
+    }
+  }
+
   void _calibrateBarometer() {
     if (!_isBarometerAvailable) {
       _showMessage('Barometer not available', Colors.red);
@@ -4591,13 +4980,46 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
       ),
+      padding: const EdgeInsets.all(16),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Multi-stage indicator (if applicable)
+          if (_navigationStage > 0) ...[
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.primary, width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.route, size: 16, color: AppColors.primary),
+                  SizedBox(width: 6),
+                  Text(
+                    _navigationStage == 1 
+                        ? 'Tahap 1/2: Menuju Pintu Masuk'
+                        : 'Tahap 2/2: Menuju ${_finalDestinationNode?.name ?? _finalDestinationFeature?.name}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+          ],
+          
+          // Navigation instruction
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(

@@ -246,6 +246,16 @@ class BorobudurFacilitiesData {
         longitude: 110.2041,
         description: 'Rental sepeda untuk berkeliling area',
       ),
+      
+      // Temple Access
+      TempleFeature(
+        id: 128,
+        name: 'Pintu Akses Masuk Candi',
+        type: 'entrance',
+        latitude: -7.6079520369167275,
+        longitude: 110.204449199786,
+        description: 'Pintu akses untuk masuk ke area candi utama',
+      ),
     ];
   }
 
