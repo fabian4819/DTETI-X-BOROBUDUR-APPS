@@ -4,7 +4,6 @@ import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -280,77 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
 
-
-              Center(
-                child: Text(
-                  'auth.or_login_with'.tr(),
-                  style: const TextStyle(color: AppColors.mediumGray),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Social login buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 2,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            FontAwesomeIcons.google,
-                            color: Colors.red,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                      label: const Text('Google'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: AppColors.lightGray),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // const SizedBox(width: 16),
-                  // Expanded(
-                  //   child: OutlinedButton.icon(
-                  //     onPressed: () {},
-                  //     icon: Container(
-                  //       width: 20,
-                  //       height: 20,
-                  //       color: AppColors.mediumGray,
-                  //     ),
-                  //     label: const Text('Facebook'),
-                  //     style: OutlinedButton.styleFrom(
-                  //       padding: const EdgeInsets.symmetric(vertical: 16),
-                  //       side: const BorderSide(color: AppColors.lightGray),
-                  //       shape: RoundedRectangleBorder(
-                  //         borderRadius: BorderRadius.circular(12),
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
-                ],
-              ),
             ],
             ),
           ),

@@ -3,7 +3,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'email_verification_screen.dart';
 import '../../utils/app_colors.dart';
 import '../../services/auth_manager.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -311,76 +310,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
 
-              Center(
-                child: Text(
-                  'auth.or_register_with'.tr(),
-                  style: const TextStyle(color: AppColors.mediumGray),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Social login buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 2,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: FaIcon(
-                            FontAwesomeIcons.google,
-                            color: AppColors.error,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                      label: const Text('Google'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: AppColors.lightGray),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // const SizedBox(width: 16),
-                  // Expanded(
-                  //   child: OutlinedButton.icon(
-                  //     onPressed: () {},
-                  //     icon: Container(
-                  //       width: 20,
-                  //       height: 20,
-                  //       color: AppColors.mediumGray,
-                  //     ),
-                  //     label: const Text('Facebook'),
-                  //     style: OutlinedButton.styleFrom(
-                  //       padding: const EdgeInsets.symmetric(vertical: 16),
-                  //       side: const BorderSide(color: AppColors.lightGray),
-                  //       shape: RoundedRectangleBorder(
-                  //         borderRadius: BorderRadius.circular(12),
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
-                ],
-              ),
             ],
             ),
           ),
