@@ -7,6 +7,7 @@ class TempleNode {
   final String type;
   final String? description;
   final double? altitude; // Altitude in meters above sea level
+  final bool isFromGraph; // true if from /v2/temples/graph, false if from /v1/temples/features
 
   TempleNode({
     required this.id,
@@ -16,27 +17,29 @@ class TempleNode {
     required this.type,
     this.description,
     this.altitude,
+    this.isFromGraph = true, // Default to true for main nodes
   });
 
   factory TempleNode.fromGraphFeature(dynamic feature) {
-    final geometry = feature['geometry'];
-    final properties = feature['properties'];
-    final coordinates = geometry['coordinates'] as List;
+    final geometry = feature.geometry;
+    final properties = feature.properties;
+    final coordinates = geometry.pointCoordinates!;
 
     // Handle 2D [lon, lat] or 3D [lon, lat, altitude] coordinates
     double? altitude;
     if (coordinates.length >= 3) {
-      altitude = (coordinates[2] as num).toDouble();
+      altitude = coordinates[2];
     }
 
     return TempleNode(
-      id: properties['id'] as int,
-      name: properties['name'] as String,
-      latitude: coordinates[1].toDouble(), // API returns [lon, lat]
-      longitude: coordinates[0].toDouble(),
-      type: _determineNodeType(properties['name'] as String),
-      description: properties['name'] as String,
-      altitude: altitude ?? properties['altitude']?.toDouble(),
+      id: properties.id!,
+      name: properties.name ?? 'Unknown Node',
+      latitude: coordinates[1],
+      longitude: coordinates[0],
+      type: properties.type ?? _determineNodeType(properties.name ?? 'NODE'),
+      description: properties.description ?? properties.name,
+      altitude: altitude ?? properties.altitude?.toDouble(),
+      isFromGraph: true, // From /v2/temples/graph
     );
   }
 
@@ -59,6 +62,7 @@ class TempleNode {
       type: properties.type ?? 'NODE',
       description: properties.description ?? properties.name,
       altitude: altitude ?? properties.altitude?.toDouble(),
+      isFromGraph: false, // From /v1/temples/features
     );
   }
 
@@ -206,6 +210,7 @@ class TempleFeature {
   final double? rating;
   final double? distanceM;
   final double? altitude; // Altitude in meters above sea level
+  final bool isFromApi; // true if from /v1/temples/features, false if dummy facility
 
   TempleFeature({
     required this.id,
@@ -218,6 +223,7 @@ class TempleFeature {
     this.rating,
     this.distanceM,
     this.altitude,
+    this.isFromApi = false, // Default to false (dummy facility)
   });
 
   factory TempleFeature.fromApiFeature(dynamic feature) {
@@ -242,6 +248,7 @@ class TempleFeature {
       rating: properties.rating,
       distanceM: properties.distanceM,
       altitude: altitude ?? properties.altitude?.toDouble(),
+      isFromApi: true, // From /v1/temples/features
     );
   }
 

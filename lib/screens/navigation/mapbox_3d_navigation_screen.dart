@@ -1633,10 +1633,16 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
               print('Is feature source? ${source == 'features-stupa-source' || source == 'features-other-source'}');
               print('Type check: type != NODE? ${type != null && type != 'NODE'}');
               
-              if (source == 'features-stupa-source' || source == 'features-other-source' || 
-                  (type != null && type != 'NODE')) {
-                // It's a feature marker
-                print('Determined as FEATURE marker');
+              // Determine if it's a node or feature based on SOURCE LAYER, not type
+              final isNodeLayer = source != null && source.startsWith('nodes-level-');
+              final isFeatureLayer = source == 'features-stupa-source' || source == 'features-other-source';
+              
+              print('Is node layer? $isNodeLayer');
+              print('Is feature layer? $isFeatureLayer');
+              
+              if (isFeatureLayer) {
+                // It's a feature marker from /v1/temples/features
+                print('Determined as FEATURE marker (from API)');
                 try {
                   final templeFeature = _navigationService.features.firstWhere(
                     (f) => f.id == id,
@@ -1648,9 +1654,9 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                 } catch (e) {
                   print('Feature not found in service for ID: $id, error: $e');
                 }
-              } else {
-                // It's a node marker (type == 'NODE' or from node source)
-                print('Determined as NODE marker');
+              } else if (isNodeLayer) {
+                // It's a node marker from /v2/temples/graph
+                print('Determined as NODE marker (from graph)');
                 final node = _navigationService.nodes[id];
                 if (node != null) {
                   print('Opening bottom sheet for node: ${node.name} (ID: $id)');
@@ -1659,6 +1665,8 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                 } else {
                   print('Node not found in service for ID: $id');
                 }
+              } else {
+                print('⚠️ Unknown source layer: $source');
               }
             } else {
               print('No ID in properties');
@@ -1745,35 +1753,36 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                   
                   const SizedBox(height: 20),
                   
-                  // Navigation button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _startNavigationToNode(node);
-                      },
-                      icon: const Icon(Icons.navigation, color: Colors.white),
-                      label: const Text(
-                        'Navigasi ke Sini',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                  // Navigation button - only show for nodes from graph (/v2/temples/graph)
+                  if (node.isFromGraph)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _startNavigationToNode(node);
+                        },
+                        icon: const Icon(Icons.navigation, color: Colors.white),
+                        label: const Text(
+                          'Navigasi ke Sini',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
                         ),
-                        elevation: 2,
                       ),
                     ),
-                  ),
                   
-                  const SizedBox(height: 8),
+                  if (node.isFromGraph) const SizedBox(height: 8),
                   
                   // Close button
                   SizedBox(
@@ -1829,6 +1838,8 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
 
   // Show bottom sheet with feature info
   void _showFeatureInfoBottomSheet(dynamic feature) {
+    print('🔍 Feature info: ${feature.name}, isFromApi: ${feature.isFromApi}');
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1901,35 +1912,36 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                   
                   const SizedBox(height: 20),
                   
-                  // Navigation button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _startNavigationToFeature(feature);
-                      },
-                      icon: const Icon(Icons.navigation, color: Colors.white),
-                      label: const Text(
-                        'Navigasi ke Sini',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                  // Navigation button - only show for dummy facilities (not API features)
+                  if (!feature.isFromApi)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _startNavigationToFeature(feature);
+                        },
+                        icon: const Icon(Icons.navigation, color: Colors.white),
+                        label: const Text(
+                          'Navigasi ke Sini',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
                         ),
-                        elevation: 2,
                       ),
                     ),
-                  ),
                   
-                  const SizedBox(height: 8),
+                  if (!feature.isFromApi) const SizedBox(height: 8),
                   
                   // Close button
                   SizedBox(
@@ -5154,26 +5166,27 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                   ],
                 ),
               ),
-              // Action button
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: isNavigating ? _stopNavigation : _startNavigation,
-                      icon: Icon(isNavigating ? Icons.stop : Icons.navigation),
-                      label: Text(isNavigating ? 'Stop' : 'Start Navigation'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isNavigating ? Colors.red : AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+              // Action button - only show for dummy facilities (not API features)
+              if (destinationFeature != null && !destinationFeature!.isFromApi)
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: isNavigating ? _stopNavigation : _startNavigation,
+                        icon: Icon(isNavigating ? Icons.stop : Icons.navigation),
+                        label: Text(isNavigating ? 'Stop' : 'Start Navigation'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isNavigating ? Colors.red : AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
             ],
           ),
         ),

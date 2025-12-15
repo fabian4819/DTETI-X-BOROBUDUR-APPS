@@ -99,15 +99,20 @@ class TempleNavigationService {
     debugPrint('🔍 Parsing graph data with ${graphData.features.length} features');
 
     // Parse nodes (Points)
-    int nodeCount = 0;
-    for (final feature in graphData.features) {
-      if (feature.geometry.isPoint && feature.properties.id != null) {
-        final node = TempleNode.fromApiFeature(feature);
+  int nodeCount = 0;
+  for (final feature in graphData.features) {
+    if (feature.geometry.isPoint && feature.properties.id != null) {
+      try {
+        final node = TempleNode.fromGraphFeature(feature);
         newNodes[node.id] = node;
         nodeCount++;
+      } catch (e) {
+        debugPrint('❌ Error parsing node: $e');
+        debugPrint('   Feature: ${feature.properties.name}');
       }
     }
-    debugPrint('✅ Parsed $nodeCount nodes');
+  }
+  debugPrint('✅ Parsed $nodeCount nodes');
 
     // Parse edges (LineStrings)
     int edgeCount = 0;
