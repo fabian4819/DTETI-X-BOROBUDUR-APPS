@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
@@ -335,6 +338,48 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       
     } catch (e) {
       print('Error setting up map style: $e');
+    }
+  }
+
+  // Helper function to load image from assets
+  Future<Uint8List?> _loadImageFromAsset(String assetPath) async {
+    try {
+      final ByteData data = await rootBundle.load(assetPath);
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      final frame = await codec.getNextFrame();
+      final byteData = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (e) {
+      print('Error loading image from $assetPath: $e');
+      return null;
+    }
+  }
+
+  // Helper function to convert Material Icon to image bytes
+  Future<Uint8List?> _iconToImage(IconData icon, {double size = 48, Color color = Colors.white}) async {
+    try {
+      final pictureRecorder = ui.PictureRecorder();
+      final canvas = Canvas(pictureRecorder);
+      
+      final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
+      textPainter.text = TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontSize: size,
+          fontFamily: icon.fontFamily,
+          color: color,
+        ),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset.zero);
+      
+      final picture = pictureRecorder.endRecording();
+      final image = await picture.toImage(size.toInt(), size.toInt());
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (e) {
+      print('Error converting icon to image: $e');
+      return null;
     }
   }
 
@@ -801,55 +846,89 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         ));
         print('✅ Added source: $sourceId');
         
-        // Add circle layer for nodes (colorful circles, no symbols)
-        final layerId = 'nodes-circles-$level';
+        // Load custom icons (only once per level iteration)
+        if (level == nodesByLevel.keys.first) {
+          try {
+            print('🎨 Loading custom icons...');
+            final gateIconData = await _loadImageFromAsset('assets/images/icon_gate.png');
+            if (gateIconData != null) {
+              try {
+                await _mapboxMap!.style.addStyleImage('icon-gate', 1.0, MbxImage(width: 50, height: 50, data: gateIconData), false, [], [], null);
+                print('✅ Loaded icon-gate (${gateIconData.length} bytes)');
+              } catch (e) {
+                print('⚠️ Icon-gate already exists or error: $e');
+              }
+            } else {
+              print('❌ Failed to load icon-gate');
+            }
+            
+            final stupaIconData = await _loadImageFromAsset('assets/images/icon_stupa.png');
+            if (stupaIconData != null) {
+              try {
+                await _mapboxMap!.style.addStyleImage('icon-stupa', 1.0, MbxImage(width: 50, height: 50, data: stupaIconData), false, [], [], null);
+                print('✅ Loaded icon-stupa (${stupaIconData.length} bytes)');
+              } catch (e) {
+                print('⚠️ Icon-stupa already exists or error: $e');
+              }
+            } else {
+              print('❌ Failed to load icon-stupa');
+            }
+          } catch (e) {
+            print('❌ Error loading icons: $e');
+          }
+        }
+        
+        // Add symbol layer with custom icons (matching bolobudur-app)
+        final layerId = 'nodes-symbols-$level';
         
         // Determine dominant type for this level
         int stupaCount = levelNodes.where((n) => n.name.toUpperCase().contains('STUPA')).length;
         int tanggaCount = levelNodes.where((n) => n.name.toUpperCase().contains('TANGGA')).length;
         
-        print('   📊 Level $level analysis: STUPA=$stupaCount, TANGGA=$tanggaCount');
         
-        // Choose color based on dominant type
+        // Choose icon and styling based on dominant type
+        String iconImage;
         int circleColor;
         int strokeColor;
-        double radius;
-        
         if (stupaCount > tanggaCount) {
-          // STUPA dominant - Orange/Yellow theme
-          circleColor = 0xFFFFA726; // Orange
-          strokeColor = 0xFFFF6F00; // Dark Orange
-          radius = 16.0;
-          print('   🟠 Using ORANGE color (STUPA dominant)');
-        } else if (tanggaCount > 0) {
-          // TANGGA dominant - Green theme
-          circleColor = 0xFF66BB6A; // Green
-          strokeColor = 0xFF2E7D32; // Dark Green
-          radius = 14.0;
-          print('   🟢 Using GREEN color (TANGGA dominant)');
+          iconImage = 'icon-stupa';
+          circleColor = 0xFFFF9800; // Vibrant orange for stupa
+          strokeColor = 0xFFFFFFFF; // White border
+          print('   🟠 Using STUPA icon with vibrant orange background');
         } else {
-          // Default - Blue theme
-          circleColor = 0xFF42A5F5; // Blue
-          strokeColor = 0xFF1565C0; // Dark Blue
-          radius = 12.0;
-          print('   🔵 Using BLUE color (default/mixed)');
+          iconImage = 'icon-gate';
+          circleColor = 0xFF4CAF50; // Vibrant green for tangga
+          strokeColor = 0xFFFFFFFF; // White border
+          print('   🟢 Using GATE icon with vibrant green background');
         }
         
-        // Single CircleLayer with distinct colors
+        // Add background circle layer with white border
+        final circleLayerId = 'nodes-circles-$level';
         await _mapboxMap!.style.addLayer(CircleLayer(
-          id: layerId, // Use layerId (nodes-circles-$level) for consistency
+          id: circleLayerId,
           sourceId: sourceId,
-          circleRadius: radius,
+          circleRadius: 10.0, // Smaller for compact display
           circleColor: circleColor,
-          circleStrokeWidth: 4.0,
+          circleOpacity: 1.0, // Full opacity for solid background
+          circleStrokeWidth: 2.0, // White border
           circleStrokeColor: strokeColor,
-          circleOpacity: 1.0,
+          circleStrokeOpacity: 1.0,
           circlePitchAlignment: CirclePitchAlignment.VIEWPORT,
-          circleSortKey: 999.0,
+          circleSortKey: 998.0, // Below symbol layer
+        ));
+        
+        // Add symbol layer with icon on top
+        await _mapboxMap!.style.addLayer(SymbolLayer(
+          id: layerId,
+          sourceId: sourceId,
+          iconImage: iconImage,
+          iconSize: 0.3, // Smaller to create padding/margin with background
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
         ));
         
         String typeLabel = stupaCount > tanggaCount ? 'STUPA' : 'TANGGA';
-        print('✅ Added layer: $layerId for ${levelNodes.length} markers (type: $typeLabel, color: ${circleColor.toRadixString(16)})');
+        print('✅ Added enhanced layers: $circleLayerId + $layerId for ${levelNodes.length} markers');
         
         // DEBUG: Show sample node names to verify filtering
         if (levelNodes.isNotEmpty) {
@@ -912,21 +991,46 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           data: json.encode(stupaGeoJson),
         ));
         
-        // Big orange circles for STUPA features
+        // Background circle for stupa features
         await _mapboxMap!.style.addLayer(CircleLayer(
           id: 'features-stupa-circles',
           sourceId: 'features-stupa-source',
-          circleRadius: 20.0,
+          circleRadius: 10.0,
           circleColor: 0xFFFF9800, // Orange for stupas
-          circleStrokeWidth: 5.0,
-          circleStrokeColor: 0xFFE65100, // Dark orange
           circleOpacity: 1.0,
+          circleStrokeWidth: 2.0,
+          circleStrokeColor: 0xFFFFFFFF, // White border
+          circleStrokeOpacity: 1.0,
           circlePitchAlignment: CirclePitchAlignment.VIEWPORT,
           circleSortKey: 998.0,
         ));
+        
+        // Load and add stupa icon
+        try {
+          final stupaIconData = await _iconToImage(Icons.account_balance, size: 24, color: Colors.white);
+          if (stupaIconData != null) {
+            try {
+              await _mapboxMap!.style.addStyleImage('icon-feature-stupa', 1.0, MbxImage(width: 24, height: 24, data: stupaIconData), false, [], [], null);
+            } catch (e) {
+              // Icon already exists
+            }
+          }
+        } catch (e) {
+          print('Error loading stupa feature icon: $e');
+        }
+        
+        // Add stupa icon symbol
+        await _mapboxMap!.style.addLayer(SymbolLayer(
+          id: 'features-stupa-symbols',
+          sourceId: 'features-stupa-source',
+          iconImage: 'icon-feature-stupa',
+          iconSize: 0.5,
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+        ));
       }
       
-      // Add other features (orange) - 2D mode
+      // Add other features (purple) - 2D mode
       if (otherFeatures.isNotEmpty) {
         final otherGeoJson = {
           'type': 'FeatureCollection',
@@ -950,21 +1054,46 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           data: json.encode(otherGeoJson),
         ));
         
-        // Purple circles for other features
+        // Background circle for other features
         await _mapboxMap!.style.addLayer(CircleLayer(
           id: 'features-other-circles',
           sourceId: 'features-other-source',
-          circleRadius: 18.0,
+          circleRadius: 10.0,
           circleColor: 0xFF9C27B0, // Purple for other features
-          circleStrokeWidth: 5.0,
-          circleStrokeColor: 0xFF4A148C, // Dark purple
           circleOpacity: 1.0,
+          circleStrokeWidth: 2.0,
+          circleStrokeColor: 0xFFFFFFFF, // White border
+          circleStrokeOpacity: 1.0,
           circlePitchAlignment: CirclePitchAlignment.VIEWPORT,
           circleSortKey: 998.0,
         ));
+        
+        // Load and add location icon
+        try {
+          final locationIconData = await _iconToImage(Icons.place, size: 24, color: Colors.white);
+          if (locationIconData != null) {
+            try {
+              await _mapboxMap!.style.addStyleImage('icon-feature-location', 1.0, MbxImage(width: 24, height: 24, data: locationIconData), false, [], [], null);
+            } catch (e) {
+              // Icon already exists
+            }
+          }
+        } catch (e) {
+          print('Error loading location feature icon: $e');
+        }
+        
+        // Add location icon symbol
+        await _mapboxMap!.style.addLayer(SymbolLayer(
+          id: 'features-other-symbols',
+          sourceId: 'features-other-source',
+          iconImage: 'icon-feature-location',
+          iconSize: 0.5,
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+        ));
       }
       
-      print('Added ${features.length} feature markers as layers (${stupaFeatures.length} stupa, ${otherFeatures.length} other)');
+      print('Added ${features.length} feature markers with emoji icons (${stupaFeatures.length} stupa, ${otherFeatures.length} other)');
     } catch (e) {
       print('Error adding feature markers: $e');
     }
@@ -985,24 +1114,60 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       
       print('🏢 Loading ${facilities.length} external facilities across ${facilitiesByType.keys.length} types');
       
-      // Create GeoJSON for all facilities
+      // Map facility types to Material Icons
+      final Map<String, IconData> facilityIcons = {
+        'museum': Icons.museum,
+        'toilet': Icons.wc,
+        'parking': Icons.local_parking,
+        'restaurant': Icons.restaurant,
+        'cafe': Icons.local_cafe,
+        'shop': Icons.shopping_bag,
+        'entrance': Icons.door_sliding,
+        'ticket_booth': Icons.confirmation_number,
+        'information': Icons.info,
+        'medical': Icons.local_hospital,
+        'prayer_room': Icons.mosque,
+        'security': Icons.security,
+        'atm': Icons.atm,
+        'hotel': Icons.hotel,
+      };
+      
+      // Load all facility icons
+      for (final entry in facilityIcons.entries) {
+        try {
+          final iconData = await _iconToImage(entry.value, size: 24, color: Colors.white);
+          if (iconData != null) {
+            try {
+              await _mapboxMap!.style.addStyleImage('icon-facility-${entry.key}', 1.0, MbxImage(width: 24, height: 24, data: iconData), false, [], [], null);
+              print('✅ Loaded icon for ${entry.key}');
+            } catch (e) {
+              // Icon already exists
+            }
+          }
+        } catch (e) {
+          print('Error loading ${entry.key} icon: $e');
+        }
+      }
+      
+      // Create GeoJSON with icon property
       final facilitiesGeoJson = {
         'type': 'FeatureCollection',
-        'features': facilities.map((facility) => {
-          'type': 'Feature',
-          'id': facility.id,
-          'geometry': {
-            'type': 'Point',
-            'coordinates': [facility.longitude, facility.latitude],
-          },
-          'properties': {
+        'features': facilities.map((facility) {
+          final iconName = facilityIcons.containsKey(facility.type) ? 'icon-facility-${facility.type}' : 'icon-facility-information';
+          return {
+            'type': 'Feature',
             'id': facility.id,
-            'name': facility.name,
-            'type': facility.type,
-            'description': facility.description ?? '',
-            'color': BorobudurFacilitiesData.getColorForType(facility.type),
-            'icon': BorobudurFacilitiesData.getIconForType(facility.type),
-          },
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [facility.longitude, facility.latitude],
+            },
+            'properties': {
+              'id': facility.id,
+              'name': facility.name,
+              'type': facility.type,
+              'icon': iconName,
+            },
+          };
         }).toList(),
       };
       
@@ -1012,20 +1177,31 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         data: json.encode(facilitiesGeoJson),
       ));
       
-      // Red circles for external facilities (very visible!)
+      // Add background circle layer
       await _mapboxMap!.style.addLayer(CircleLayer(
         id: 'external-facilities-circles',
         sourceId: 'external-facilities-source',
-        circleRadius: 16.0,
-        circleColor: 0xFFF44336, // Bright red for facilities
-        circleStrokeWidth: 4.0,
-        circleStrokeColor: 0xFFB71C1C, // Dark red
+        circleRadius: 10.0,
+        circleColor: 0xFF2196F3, // Blue for facilities
         circleOpacity: 1.0,
+        circleStrokeWidth: 2.0,
+        circleStrokeColor: 0xFFFFFFFF, // White border
+        circleStrokeOpacity: 1.0,
         circlePitchAlignment: CirclePitchAlignment.VIEWPORT,
         circleSortKey: 997.0,
       ));
       
-      print('✅ Added ${facilities.length} external facility markers');
+      // Add icon layer using property expression
+      await _mapboxMap!.style.addLayer(SymbolLayer(
+        id: 'external-facilities-symbols',
+        sourceId: 'external-facilities-source',
+        iconImage: '{icon}',
+        iconSize: 0.5,
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+      ));
+      
+      print('✅ Added ${facilities.length} external facility markers with Material Icons');
       
       // Log facilities by type
       facilitiesByType.forEach((type, list) {
@@ -1156,12 +1332,16 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       print('Screen coordinate: x=${screenCoord.x}, y=${screenCoord.y}');
       
       // Query features at the exact screen coordinate
-      // Include node layers, feature layers, and external facilities
+      // Include all layers: node circles+symbols, feature circles+symbols, facility circles+symbols
       final layerIds = [
         ..._levelsWithMarkers.map((level) => 'nodes-circles-$level'),
+        ..._levelsWithMarkers.map((level) => 'nodes-symbols-$level'),
         'features-stupa-circles',
+        'features-stupa-symbols',
         'features-other-circles',
+        'features-other-symbols',
         'external-facilities-circles',
+        'external-facilities-symbols',
       ];
       print('Querying layers: $layerIds');
       
