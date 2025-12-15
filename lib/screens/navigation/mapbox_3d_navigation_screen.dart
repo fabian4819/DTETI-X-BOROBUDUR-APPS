@@ -104,7 +104,11 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   double cameraPitch = 0.0; // Top-down view (like bolobudur-app)
   double cameraZoom = 17.0; // Zoom level from bolobudur-app
   double cameraBearing = 0.0;
-  bool _show3DBuildings = false; // Disabled to match bolobudur-app (flat 2D map)
+  bool _show3DBuildings = false;
+  
+  // Level filter state
+  Set<int> _selectedLevels = {}; // Empty = show all levels
+  bool _showAllLevels = true; // Disabled to match bolobudur-app (flat 2D map)
 
   // Borobudur center coordinates
   static const double borobudurLat = -7.607874;
@@ -3353,6 +3357,110 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     );
   }
 
+  void _showLevelFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Filter Levels'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Show All option
+                    CheckboxListTile(
+                      title: Text('Show All Levels', style: TextStyle(fontWeight: FontWeight.bold)),
+                      value: _showAllLevels,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          _showAllLevels = value ?? true;
+                          if (_showAllLevels) {
+                            _selectedLevels.clear();
+                          }
+                        });
+                      },
+                    ),
+                    Divider(),
+                    // Individual level checkboxes (Levels 1-10)
+                    ...List.generate(10, (index) {
+                      final level = index + 1;
+                      return CheckboxListTile(
+                        title: Text('Level $level'),
+                        value: _showAllLevels || _selectedLevels.contains(level),
+                        enabled: !_showAllLevels,
+                        onChanged: _showAllLevels ? null : (value) {
+                          setDialogState(() {
+                            if (value == true) {
+                              _selectedLevels.add(level);
+                            } else {
+                              _selectedLevels.remove(level);
+                            }
+                          });
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      // State already updated via setDialogState
+                    });
+                    _applyLevelFilter();
+                    Navigator.pop(context);
+                  },
+                  child: Text('Apply'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _applyLevelFilter() async {
+    if (_mapboxMap == null) return;
+    
+    try {
+      // Update visibility of marker layers based on selected levels
+      for (final level in _levelsWithMarkers) {
+        final circleLayerId = 'nodes-circles-$level';
+        final symbolLayerId = 'nodes-symbols-$level';
+        
+        final shouldShow = _showAllLevels || _selectedLevels.contains(level);
+        final visibility = shouldShow ? 'visible' : 'none';
+        
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty(
+            circleLayerId,
+            'visibility',
+            visibility,
+          );
+          await _mapboxMap!.style.setStyleLayerProperty(
+            symbolLayerId,
+            'visibility',
+            visibility,
+          );
+        } catch (e) {
+          print('Could not update visibility for level $level: $e');
+        }
+      }
+      
+      print('✅ Applied level filter: ${_showAllLevels ? "All levels" : "Levels ${_selectedLevels.join(", ")}"}');
+    } catch (e) {
+      print('Error applying level filter: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3369,87 +3477,113 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           ),
         ),
         actions: [
-          // Map Center Mode toggle
-          IconButton(
-            icon: Icon(
-              _mapCenterMode == MapCenterMode.borobudurLocation 
-                  ? Icons.temple_buddhist 
-                  : Icons.location_on,
-              color: _mapCenterMode == MapCenterMode.borobudurLocation 
-                  ? AppColors.primary 
-                  : Colors.green,
-            ),
-            onPressed: () {
-              setState(() {
-                if (_mapCenterMode == MapCenterMode.borobudurLocation) {
-                  _mapCenterMode = MapCenterMode.currentLocation;
-                  _switchToCurrentLocationMode();
-                } else {
-                  _mapCenterMode = MapCenterMode.borobudurLocation;
-                  _switchToBorobudurMode();
-                }
-              });
+          // Single menu button for all options
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: Colors.black),
+            tooltip: 'Menu',
+            onSelected: (value) {
+              switch (value) {
+                case 'map_center':
+                  setState(() {
+                    if (_mapCenterMode == MapCenterMode.borobudurLocation) {
+                      _mapCenterMode = MapCenterMode.currentLocation;
+                      _switchToCurrentLocationMode();
+                    } else {
+                      _mapCenterMode = MapCenterMode.borobudurLocation;
+                      _switchToBorobudurMode();
+                    }
+                  });
+                  break;
+                case 'location_mode':
+                  setState(() {
+                    _showLocationModePanel = !_showLocationModePanel;
+                  });
+                  break;
+                case 'level_config':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const LevelConfigScreen(),
+                    ),
+                  );
+                  break;
+                case 'level_filter':
+                  _showLevelFilterDialog();
+                  break;
+              }
             },
-            tooltip: _mapCenterMode == MapCenterMode.borobudurLocation 
-                ? 'Mode: Borobudur (tap untuk Current Location)'
-                : 'Mode: Current Location (tap untuk Borobudur)',
-          ),
-          
-          // Location mode toggle
-          IconButton(
-            icon: Icon(
-              _locationMode == LocationMode.currentLocation 
-                  ? Icons.my_location 
-                  : Icons.edit_location_alt,
-              color: _locationMode == LocationMode.customLocation 
-                  ? Colors.orange 
-                  : AppColors.primary,
-            ),
-            onPressed: () {
-              setState(() {
-                _showLocationModePanel = !_showLocationModePanel;
-              });
-            },
-            tooltip: 'Pilih Mode Lokasi',
-          ),
-          
-          // Level configuration
-          if (_isBarometerAvailable)
-            IconButton(
-              icon: Icon(
-                Icons.tune,
-                color: AppColors.accent,
-              ),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const LevelConfigScreen(),
+            itemBuilder: (context) => [
+              // Map Center Mode
+              PopupMenuItem(
+                value: 'map_center',
+                child: ListTile(
+                  leading: Icon(
+                    _mapCenterMode == MapCenterMode.borobudurLocation 
+                        ? Icons.temple_buddhist 
+                        : Icons.location_on,
+                    color: _mapCenterMode == MapCenterMode.borobudurLocation 
+                        ? AppColors.primary 
+                        : Colors.green,
                   ),
-                );
-              },
-              tooltip: 'Configure Level Settings',
-            ),
-          
-          // 3D Building visualization toggle
-          if (_isBarometerAvailable)
-            IconButton(
-              icon: Icon(
-                _show3DBuildings ? Icons.layers : Icons.layers_clear,
-                color: _show3DBuildings ? AppColors.primary : Colors.grey,
+                  title: Text('Map Center'),
+                  subtitle: Text(
+                    _mapCenterMode == MapCenterMode.borobudurLocation 
+                        ? 'Borobudur' 
+                        : 'Current Location'
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
-              onPressed: () {
-                setState(() {
-                  _show3DBuildings = !_show3DBuildings;
-                });
-                
-                if (_show3DBuildings) {
-                  _enable3DBuildingVisualization();
-                } else {
-                  _disable3DBuildingVisualization();
-                }
-              },
-              tooltip: _show3DBuildings ? 'Hide 3D Buildings' : 'Show 3D Buildings',
-            ),
+              
+              // Location Mode
+              PopupMenuItem(
+                value: 'location_mode',
+                child: ListTile(
+                  leading: Icon(
+                    _locationMode == LocationMode.currentLocation 
+                        ? Icons.my_location 
+                        : Icons.edit_location_alt,
+                    color: _locationMode == LocationMode.customLocation 
+                        ? Colors.orange 
+                        : AppColors.primary,
+                  ),
+                  title: Text('Location Mode'),
+                  subtitle: Text(
+                    _locationMode == LocationMode.currentLocation 
+                        ? 'Current Location' 
+                        : 'Custom Location'
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              
+              // Level Configuration (only if barometer available)
+              if (_isBarometerAvailable)
+                PopupMenuItem(
+                  value: 'level_config',
+                  child: ListTile(
+                    leading: Icon(Icons.tune, color: AppColors.accent),
+                    title: Text('Level Settings'),
+                    subtitle: Text('Configure altitude levels'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              
+              // Level Filter
+              PopupMenuItem(
+                value: 'level_filter',
+                child: ListTile(
+                  leading: Icon(Icons.filter_list, color: AppColors.primary),
+                  title: Text('Filter Levels'),
+                  subtitle: Text(
+                    _showAllLevels 
+                        ? 'Showing all levels' 
+                        : '${_selectedLevels.length} level(s) selected'
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
           
           // Voice toggle
           IconButton(
