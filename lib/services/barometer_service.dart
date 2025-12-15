@@ -26,6 +26,41 @@ class BarometerUpdate {
   String toString() => 'BarometerUpdate(pressure: ${pressure.toStringAsFixed(2)} hPa, altitude: ${altitude.toStringAsFixed(2)}m, relativeAltitude: ${relativeAltitude.toStringAsFixed(2)}m, source: ${isFromGPS ? 'GPS' : 'Barometer'})';
 }
 
+/// Calibration type
+enum CalibrationType {
+  none,   // Not calibrated
+  auto,   // Auto-calibrated to 256 mdpl (fallback)
+  manual, // User manually calibrated at ground level
+}
+
+/// Calibration state with validity tracking
+class CalibrationState {
+  final CalibrationType type;
+  final DateTime? timestamp;
+  
+  CalibrationState({
+    required this.type,
+    this.timestamp,
+  });
+  
+  /// Check if calibration is still valid (< 24 hours old)
+  bool get isValid {
+    if (type == CalibrationType.none) return false;
+    if (timestamp == null) return false;
+    final age = DateTime.now().difference(timestamp!);
+    return age < Duration(hours: 24);
+  }
+  
+  /// Get calibration age in hours
+  double get ageInHours {
+    if (timestamp == null) return 0;
+    return DateTime.now().difference(timestamp!).inMinutes / 60.0;
+  }
+  
+  @override
+  String toString() => 'CalibrationState(type: $type, age: ${ageInHours.toStringAsFixed(1)}h, valid: $isValid)';
+}
+
 /// Service for managing barometer sensor and altitude calculations
 class BarometerService {
   static final BarometerService _instance = BarometerService._internal();
@@ -65,6 +100,7 @@ class BarometerService {
   double _baseAltitude = 0.0;
   double _currentRelativeAltitude = 0.0;
   bool _isCalibrated = false;
+  CalibrationState _calibrationState = CalibrationState(type: CalibrationType.none);
 
   // Readings
   List<double> _pressureReadings = [];
@@ -83,6 +119,7 @@ class BarometerService {
   double get baseAltitude => _baseAltitude;
   double get borobudurGroundLevel => BOROBUDUR_GROUND_LEVEL;
   double get borobudurBaseElevation => BOROBUDUR_BASE_ELEVATION;
+  CalibrationState get calibrationState => _calibrationState;
 
   /// Initialize the barometer service
   Future<bool> initialize() async {
@@ -476,25 +513,43 @@ class BarometerService {
   // Calibration methods
 
   /// Calibrate barometer specifically for Candi Borobudur
-  /// Sets the base altitude to Borobudur's ground level (265m mdpl)
+  /// Sets the base altitude to Borobudur's ground level (default 265m mdpl)
+  /// knownAltitude: The absolute altitude (mdpl) that current location should be considered as
+  /// calibrationType: Type of calibration (auto or manual)
   /// This ensures relative altitude shows height from ground floor (0m = lantai dasar)
-  Future<void> calibrateForBorobudur() async {
+  Future<void> calibrateForBorobudur({
+    double? knownAltitude,
+    CalibrationType calibrationType = CalibrationType.auto,
+  }) async {
     try {
+      final targetAltitude = knownAltitude ?? BOROBUDUR_BASE_ELEVATION;
+      
       if (_useGPS) {
         // iOS GPS calibration for Borobudur
-        _baseAltitude = BOROBUDUR_BASE_ELEVATION;
-        _isCalibrated = true;
-        _currentRelativeAltitude = 0.0;
+        // Set base altitude so that current GPS reading corresponds to targetAltitude
+        if (_altitudeReadings.isNotEmpty) {
+          final currentGPSAltitude = _getSmoothedAltitude();
+          // Adjust base so: currentGPSAltitude - base = 0 (we're at ground level)
+          // Therefore: base = currentGPSAltitude - 0 = currentGPSAltitude
+          // But we want base to represent the absolute elevation, so:
+          _baseAltitude = targetAltitude;
+          _isCalibrated = true;
+          _currentRelativeAltitude = currentGPSAltitude - targetAltitude;
+        } else {
+          _baseAltitude = targetAltitude;
+          _isCalibrated = true;
+          _currentRelativeAltitude = 0.0;
+        }
         
-        print('🏛️ GPS calibrated for Candi Borobudur: baseAltitude=${BOROBUDUR_BASE_ELEVATION}m mdpl');
-        print('📏 Relative altitude will show height from ground level (0m = lantai dasar)');
+        print('🏛️ GPS calibrated for Candi Borobudur: baseAltitude=${targetAltitude}m mdpl (${calibrationType.name})');
+        print('📏 Current location is at ground level (${targetAltitude}m mdpl)');
       } else if (_useIOSAltimeter) {
         // iOS CMAltimeter calibration for Borobudur
-        _baseAltitude = BOROBUDUR_BASE_ELEVATION;
+        _baseAltitude = targetAltitude;
         _isCalibrated = true;
         _currentRelativeAltitude = 0.0;
         
-        print('🏛️ iOS Altimeter calibrated for Candi Borobudur: baseAltitude=${BOROBUDUR_BASE_ELEVATION}m mdpl');
+        print('🏛️ iOS Altimeter calibrated for Candi Borobudur: baseAltitude=${targetAltitude}m mdpl (${calibrationType.name})');
         print('📏 Relative altitude will show height from ground level (0m = lantai dasar)');
       } else {
         // Android barometer calibration for Borobudur
@@ -506,28 +561,28 @@ class BarometerService {
 
         final currentPressure = _getSmoothedPressure();
         
-        // Calculate what the pressure should be at Borobudur's base elevation (265m mdpl)
-        // Using reverse barometric formula: P = P0 * (1 - L*h/T0)^(g*M/(R*L))
-        final ratio = 1.0 - (_pressureLapseRate * BOROBUDUR_BASE_ELEVATION / _temperatureKelvin);
-        final exponent = (_gravity * _molarMass) / (_gasConstant * _pressureLapseRate);
-        final expectedPressureAt265m = _seaLevelPressure * pow(ratio, exponent);
-        
-        // Set base pressure to expected pressure at ground level
-        // This way, relative altitude will be 0 at ground floor
+        // Set current pressure as base pressure (ground level)
+        // Set target altitude as base altitude (absolute elevation)
         _basePressure = currentPressure;
-        _baseAltitude = BOROBUDUR_BASE_ELEVATION;
+        _baseAltitude = targetAltitude;
         _isCalibrated = true;
         _currentRelativeAltitude = 0.0;
 
-        print('🏛️ Barometer calibrated for Candi Borobudur:');
+        print('🏛️ Barometer calibrated for Candi Borobudur (${calibrationType.name}):');
         print('   • Base pressure: ${_basePressure.toStringAsFixed(2)} hPa (current ground level)');
-        print('   • Base altitude: ${BOROBUDUR_BASE_ELEVATION}m mdpl');
-        print('   • Expected pressure at 265m: ${expectedPressureAt265m.toStringAsFixed(2)} hPa');
-        print('📏 Relative altitude will show height from ground level:');
-        print('   • 0m = Lantai dasar (ground floor)');
-        print('   • ~15m = Lantai tengah (middle terraces)');
-        print('   • ~35m = Puncak stupa (top platform)');
+        print('   • Base altitude: ${targetAltitude}m mdpl (absolute elevation)');
+        print('   • Current location is now considered as ${targetAltitude}m mdpl');
+        print('📏 Relative altitude will show height from this ground level:');
+        print('   • 0m = Current location (${targetAltitude}m mdpl)');
+        print('   • +10m = 10 meters above current location');
+        print('   • -10m = 10 meters below current location');
       }
+
+      // Update calibration state
+      _calibrationState = CalibrationState(
+        type: calibrationType,
+        timestamp: DateTime.now(),
+      );
 
       // Save calibration
       await _saveCalibration();
@@ -617,6 +672,14 @@ class BarometerService {
       await prefs.setDouble('barometer_base_pressure', _basePressure);
       await prefs.setDouble('barometer_base_altitude', _baseAltitude);
       await prefs.setBool('barometer_calibrated', _isCalibrated);
+      
+      // Save calibration state
+      await prefs.setString('barometer_calibration_type', _calibrationState.type.name);
+      if (_calibrationState.timestamp != null) {
+        await prefs.setInt('barometer_calibration_timestamp', _calibrationState.timestamp!.millisecondsSinceEpoch);
+      }
+      
+      print('💾 Calibration saved: ${_calibrationState}');
     } catch (e) {
       print('Error saving calibration: $e');
     }
@@ -630,7 +693,26 @@ class BarometerService {
       _baseAltitude = prefs.getDouble('barometer_base_altitude') ?? 0.0;
       _isCalibrated = prefs.getBool('barometer_calibrated') ?? false;
 
-      print('Loaded calibration: pressure=${_basePressure.toStringAsFixed(2)} hPa, altitude=${_baseAltitude.toStringAsFixed(2)}m, calibrated=$_isCalibrated');
+      // Load calibration state
+      final typeString = prefs.getString('barometer_calibration_type');
+      final timestampMs = prefs.getInt('barometer_calibration_timestamp');
+      
+      if (typeString != null) {
+        final type = CalibrationType.values.firstWhere(
+          (e) => e.name == typeString,
+          orElse: () => CalibrationType.none,
+        );
+        final timestamp = timestampMs != null 
+          ? DateTime.fromMillisecondsSinceEpoch(timestampMs)
+          : null;
+        
+        _calibrationState = CalibrationState(
+          type: type,
+          timestamp: timestamp,
+        );
+      }
+
+      print('📂 Loaded calibration: pressure=${_basePressure.toStringAsFixed(2)} hPa, altitude=${_baseAltitude.toStringAsFixed(2)}m, state=${_calibrationState}');
     } catch (e) {
       print('Error loading calibration: $e');
     }

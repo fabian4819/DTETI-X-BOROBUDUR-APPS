@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui'; // Import for ImageFilter
 import 'package:easy_localization/easy_localization.dart';
+import 'package:geolocator/geolocator.dart' as geo;
 import 'auth_wrapper.dart';
 import '../utils/app_colors.dart';
 import '../services/language_service.dart';
@@ -100,6 +101,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             await _languageService.saveLanguage(
                               context.locale.languageCode,
                             );
+                            
+                            // Request location permission
+                            await _requestLocationPermission();
+                            
                             if (!mounted) return;
                             Navigator.pushReplacement(
                               context,
@@ -139,6 +144,59 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _requestLocationPermission() async {
+    try {
+      // Check current permission status
+      final permission = await geo.Geolocator.checkPermission();
+      print('📍 Current location permission: $permission');
+      
+      if (permission == geo.LocationPermission.denied) {
+        // Show dialog explaining why we need permission
+        if (mounted) {
+          final shouldRequest = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.location_on, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Izin Lokasi Diperlukan')),
+                ],
+              ),
+              content: Text(
+                'Aplikasi memerlukan akses lokasi untuk:\n'
+                '• Menampilkan posisi Anda di peta\n'
+                '• Memberikan navigasi real-time\n'
+                '• Mendeteksi level/lantai Anda\n\n'
+                'Silakan berikan izin akses lokasi.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('Nanti'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('Berikan Izin'),
+                ),
+              ],
+            ),
+          );
+          
+          if (shouldRequest == true) {
+            final result = await geo.Geolocator.requestPermission();
+            print('✅ Permission request result: $result');
+          }
+        }
+      } else {
+        print('✅ Location permission already granted: $permission');
+      }
+    } catch (e) {
+      print('❌ Error requesting location permission: $e');
+    }
   }
 
   Widget _buildLanguageButton(String languageCode, String flag) {

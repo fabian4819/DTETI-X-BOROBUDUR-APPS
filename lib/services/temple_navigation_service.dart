@@ -327,6 +327,33 @@ class TempleNavigationService {
       final totalDistance = _calculateTotalDistance(path);
       final estimatedTime = (totalDistance / 1.4).ceil(); // 1.4 m/s walking speed
 
+      // Send initial navigation update
+      if (_currentPosition != null && path.isNotEmpty) {
+        final firstStep = path.first;
+        final distanceToFirst = _calculateDistance(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+          firstStep.latitude,
+          firstStep.longitude,
+        );
+        
+        _navigationUpdateController?.add(NavigationUpdate(
+          currentStep: toNode ?? TempleNode(
+            id: 0,
+            name: 'Tujuan',
+            latitude: firstStep.latitude,
+            longitude: firstStep.longitude,
+            type: 'DESTINATION',
+          ),
+          distanceToNextStep: distanceToFirst,
+          instruction: 'Mulai navigasi - Lurus ${distanceToFirst.toStringAsFixed(0)} meter',
+          remainingDistance: totalDistance,
+          estimatedTime: estimatedTime,
+          stepIndex: 0,
+          totalSteps: path.length,
+        ));
+      }
+
       return NavigationResult(
         success: true,
         path: path,
@@ -724,21 +751,38 @@ class TempleNavigationService {
       currentStep.longitude,
     );
 
+    // Calculate direction to next step
+    final direction = _getDirectionInstruction(_currentStepIndex);
+    final remainingDist = _calculateRemainingDistance(currentPos);
+    final estTime = _calculateEstimatedTime(currentPos);
+    
+    // Send update on every position change
+    _navigationUpdateController?.add(NavigationUpdate(
+      currentStep: _destination!,
+      distanceToNextStep: distanceToStep,
+      instruction: '$direction ${distanceToStep.toStringAsFixed(0)} meter',
+      remainingDistance: remainingDist,
+      estimatedTime: estTime,
+      stepIndex: _currentStepIndex,
+      totalSteps: _currentPath.length,
+    ));
+
     // If close to current step (within 5 meters), move to next step
     if (distanceToStep < 5.0 && _currentStepIndex < _currentPath.length - 1) {
       _currentStepIndex++;
       final nextStep = _currentPath[_currentStepIndex];
-      final direction = _getDirectionInstruction(_currentStepIndex);
+      final nextDirection = _getDirectionInstruction(_currentStepIndex);
+      final distToNext = _calculateDistance(
+        currentPos.latitude,
+        currentPos.longitude,
+        nextStep.latitude,
+        nextStep.longitude,
+      );
       
       _navigationUpdateController?.add(NavigationUpdate(
-        currentStep: _destination,
-        distanceToNextStep: _calculateDistance(
-          currentPos.latitude,
-          currentPos.longitude,
-          nextStep.latitude,
-          nextStep.longitude,
-        ),
-        instruction: direction,
+        currentStep: _destination!,
+        distanceToNextStep: distToNext,
+        instruction: '$nextDirection ${distToNext.toStringAsFixed(0)} meter',
         remainingDistance: _calculateRemainingDistance(currentPos),
         estimatedTime: _calculateEstimatedTime(currentPos),
         stepIndex: _currentStepIndex,
@@ -773,11 +817,11 @@ class TempleNavigationService {
 
   String _getDirectionInstruction(int stepIndex) {
     if (stepIndex >= _currentPath.length - 1) {
-      return 'Lanjutkan menuju tujuan';
+      return 'Lurus menuju tujuan';
     }
 
     if (stepIndex == 0) {
-      return 'Mulai navigasi';
+      return 'Lurus';
     }
 
     final prev = _currentPath[stepIndex - 1];
@@ -799,7 +843,7 @@ class TempleNavigationService {
       direction = 'Putar balik';
     }
 
-    return '$direction menuju tujuan';
+    return direction;
   }
 
   double _calculateBearing(double lat1, double lon1, double lat2, double lon2) {

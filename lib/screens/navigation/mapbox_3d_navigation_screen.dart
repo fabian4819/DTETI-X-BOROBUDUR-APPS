@@ -1,21 +1,22 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
+
 import '../../models/temple_node.dart';
 import '../../services/temple_navigation_service.dart';
 import '../../services/barometer_service.dart';
 import '../../services/level_detection_service.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/location_helper.dart';
 import '../../config/map_config.dart';
 import '../../data/borobudur_facilities_data.dart';
 import 'level_config_screen.dart';
@@ -67,10 +68,14 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   
   // Location mode
   LocationMode _locationMode = LocationMode.currentLocation;
-  geo.Position? _customStartLocation;
+  geo.Position? _customStartLocation; // Custom location selection
   bool _isSelectingStartLocation = false;
-  bool _isSelectingNodeLocation = false; // For selecting node from map
+  bool _isSelectingNodeFromMap = false; // For selecting node from map
   bool _showLocationModePanel = false;
+
+  // Calibration management
+  bool _isAtBorobudur = false;
+  bool _hasShownCalibrationPrompt = false; // Session flag
 
   // Map center mode
   MapCenterMode _mapCenterMode = MapCenterMode.borobudurLocation;
@@ -89,7 +94,8 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
 
   // Barometer and level detection
   int _currentTempleLevel = 1;
-  double _currentAltitude = 0.0;
+  double _currentAltitude = 0.0; // Relative altitude (from ground level)
+  double _currentAbsoluteAltitude = 0.0; // Absolute altitude (mdpl)
   double _currentPressure = 0.0;
   bool _isBarometerAvailable = false;
   StreamSubscription<BarometerUpdate>? _barometerSubscription;
@@ -153,9 +159,10 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           if (mounted) {
             setState(() {
               _currentAltitude = update.relativeAltitude;
+              _currentAbsoluteAltitude = update.altitude;
               _currentPressure = update.pressure;
             });
-            print('📏 Altitude Update: ${update.relativeAltitude.toStringAsFixed(2)}m | Pressure: ${update.pressure.toStringAsFixed(2)} hPa');
+            print('📏 Altitude Update: ${update.relativeAltitude.toStringAsFixed(2)}m (relative) | ${update.altitude.toStringAsFixed(2)}m (absolute) | Pressure: ${update.pressure.toStringAsFixed(2)} hPa');
           }
         });
         
@@ -192,14 +199,21 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   }
 
   Future<void> _checkLocationPermissionStatus() async {
+    print('🔍 Checking location permission status...');
     final hasPermission = await _navigationService.hasLocationPermission();
-    if (mounted) {
-      setState(() {
-        _hasLocationPermission = hasPermission;
-      });
-      if (hasPermission && useCurrentLocation) {
-        _initializeLocationTracking();
-      }
+    print('Permission status: $hasPermission');
+    
+    setState(() {
+      _hasLocationPermission = hasPermission;
+    });
+
+    if (hasPermission && _positionSubscription == null) {
+      print('⚠️ Permission granted but no position subscription, reinitializing...');
+      await _initializeLocationTracking();
+    } else if (!hasPermission) {
+      print('❌ No location permission');
+    } else {
+      print('✅ Location tracking already active');
     }
   }
 
@@ -276,6 +290,21 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       
       // Check if barometer is actually tracking
       print('📡 Barometer tracking status: ${_barometerService.isTracking}');
+      
+      // Auto-calibrate to 256 mdpl (silent, background) as fallback
+      // This will be used if user doesn't manually calibrate
+      final calibrationState = _barometerService.calibrationState;
+      if (!calibrationState.isValid) {
+        print('🔄 Auto-calibrating to 256 mdpl (fallback)...');
+        await Future.delayed(Duration(seconds: 2)); // Wait for sensor readings
+        await _barometerService.calibrateForBorobudur(
+          knownAltitude: 256.0, // IDN Times source
+          calibrationType: CalibrationType.auto,
+        );
+        print('✅ Auto-calibration complete (will be replaced if user manually calibrates)');
+      } else {
+        print('📂 Using existing calibration: ${calibrationState}');
+      }
 
       await _levelDetectionService.startDetection();
       print('✅ Level detection started');
@@ -305,11 +334,12 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         if (mounted) {
           setState(() {
             _currentAltitude = update.relativeAltitude;
+            _currentAbsoluteAltitude = update.altitude;
             _currentPressure = update.pressure;
           });
           
           // Debug logging for altitude detection
-          print('📏 Altitude Update: ${update.relativeAltitude.toStringAsFixed(2)}m | Pressure: ${update.pressure.toStringAsFixed(2)} hPa');
+          print('📏 Altitude Update: ${update.relativeAltitude.toStringAsFixed(2)}m (relative) | ${update.altitude.toStringAsFixed(2)}m (absolute) | Pressure: ${update.pressure.toStringAsFixed(2)} hPa');
         }
       });
 
@@ -326,26 +356,50 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
 
   Future<void> _initializeLocationTracking() async {
     try {
+      print('📍 Initializing location tracking...');
+      
       _hasLocationPermission ??= await _navigationService.hasLocationPermission();
+      print('Location permission status: $_hasLocationPermission');
 
       if (!_hasLocationPermission!) {
-        debugPrint('Location permission not granted, showing dialog');
+        debugPrint('❌ Location permission not granted, showing dialog');
         _showLocationPermissionDialog();
         return;
       }
 
+      print('✅ Location permission granted');
+      
+      // Get initial position for testing
       _currentPosition = _navigationService.getCurrentLocationForTesting();
+      print('Initial test position: $_currentPosition');
 
+      // Start location tracking
+      print('Starting location tracking service...');
       await _navigationService.startLocationTracking();
+      print('✅ Location tracking service started');
 
+      // Subscribe to position stream
       _positionSubscription = _navigationService.positionStream?.listen((position) {
         if (mounted) {
           setState(() {
             _currentPosition = position;
+            
+            // Check if at Borobudur
+            _isAtBorobudur = LocationHelper.isAtBorobudur(
+              position.latitude,
+              position.longitude,
+            );
           });
+          
+          print('📍 Position update: ${position.latitude}, ${position.longitude}, accuracy: ${position.accuracy}m, atBorobudur: $_isAtBorobudur');
           _updateUserLocationOnMap(position);
+          
+          // Show smart calibration prompt if needed
+          _checkAndShowCalibrationPrompt();
         }
       });
+      
+      print('Position stream subscription: ${_positionSubscription != null ? "Active" : "NULL"}');
 
       _navigationSubscription = _navigationService.navigationUpdateStream?.listen((update) {
         if (mounted) {
@@ -358,8 +412,11 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
           }
         }
       });
+      
+      print('✅ Location tracking fully initialized');
     } catch (e) {
-      debugPrint('Failed to initialize location tracking: $e');
+      print('❌ Error initializing location tracking: $e');
+      print('Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -1400,7 +1457,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     }
     
     // Handle node selection (tap on node marker)
-    if (_isSelectingNodeLocation) {
+    if (_isSelectingNodeFromMap) {
       final screenCoordinate = await _mapboxMap!.pixelForCoordinate(point);
       
       try {
@@ -1438,7 +1495,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                     altitudeAccuracy: 0,
                     headingAccuracy: 0,
                   );
-                  _isSelectingNodeLocation = false;
+                  _isSelectingNodeFromMap = false;
                   _locationMode = LocationMode.customLocation;
                 });
                 
@@ -2301,19 +2358,11 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       // Get destination node info
       final destinationNode = _navigationService.nodes[toNodeId];
       final destinationLevel = destinationNode?.level;
-      final isDestinationTangga = destinationNode?.name.contains('TANGGA') ?? false;
       
       print('=== Borobudur Route Request ===');
       print('From: ($startLat, $startLon)');
-      print('To: Node $toNodeId${destinationNode != null ? ' (${destinationNode.name}, Level $destinationLevel${isDestinationTangga ? ', TANGGA node' : ''})' : ''}');
+      print('To: Node $toNodeId${destinationNode != null ? ' (${destinationNode.name}, Level $destinationLevel)' : ''}');
       
-      // If destination is TANGGA (isolated), skip snap-to-nearest and go straight to Mapbox
-      if (isDestinationTangga) {
-        print('⚠️ Destination is TANGGA node (likely isolated from graph)');
-        print('Skipping Borobudur API and using Mapbox Directions instead');
-        return null;
-      }
-
       // Attempt 1: Try direct routing from position
       var url = Uri.parse('$baseUrl?fromLat=$startLat&fromLon=$startLon&toNodeId=$toNodeId&profile=$profile');
       print('\n--- Attempt 1: Direct routing ---');
@@ -2328,14 +2377,16 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
         if (data['status'] == 'success' && data['data'] != null) {
           // Check if data contains error (no path found)
           if (data['data']['error'] != null) {
-            print('❌ Error: ${data['data']['error']}');
+            print('❌ Borobudur API Error: ${data['data']['error']}');
+            print('Will try nearest nodes or fallback to Mapbox');
           } else if (data['data']['features'] != null && 
               (data['data']['features'] as List).isNotEmpty) {
-            print('✅ Direct route successful!');
+            print('✅ SUCCESS: Using Borobudur Backend API for routing!');
             final feature = data['data']['features'][0];
             if (feature['properties'] != null) {
-              print('Distance: ${feature['properties']['distance_m']} m');
-              print('Duration: ${feature['properties']['duration_s']} s');
+              print('📊 Route metrics:');
+              print('   Distance: ${feature['properties']['distance_m']} m');
+              print('   Duration: ${feature['properties']['duration_s']} s');
             }
             return feature;
           }
@@ -2893,17 +2944,16 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     if (_mapboxMap == null) return;
 
     try {
-      // Update camera to follow user ONLY if using current location mode
-      // If using custom location mode, don't auto-follow GPS
-      if (isNavigating && _locationMode == LocationMode.currentLocation) {
+      // Update camera to follow user during navigation
+      if (isNavigating) {
         await _mapboxMap!.flyTo(
           CameraOptions(
             center: Point(coordinates: Position(position.longitude, position.latitude)),
-            zoom: cameraZoom,
-            bearing: cameraBearing,
-            pitch: cameraPitch,
+            zoom: 19.0, // Closer zoom for navigation
+            bearing: position.heading, // Follow user's heading
+            pitch: 60.0, // 3D perspective
           ),
-          MapAnimationOptions(duration: 1000, startDelay: 0),
+          MapAnimationOptions(duration: 800, startDelay: 0),
         );
       }
     } catch (e) {
@@ -2984,7 +3034,55 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
   }
 
   void _showLocationPermissionDialog() {
-    // Implementation similar to previous version
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.location_on, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Izin Lokasi Diperlukan'),
+          ],
+        ),
+        content: Text(
+          'Aplikasi memerlukan akses lokasi untuk:\n'
+          '• Menampilkan posisi Anda di peta\n'
+          '• Memberikan navigasi real-time\n'
+          '• Mendeteksi level/lantai Anda\n\n'
+          'Silakan berikan izin akses lokasi.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Nanti'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              // Request permission
+              final permission = await geo.Geolocator.requestPermission();
+              print('Permission request result: $permission');
+              
+              if (permission == geo.LocationPermission.always || 
+                  permission == geo.LocationPermission.whileInUse) {
+                print('✅ Permission granted, initializing location tracking...');
+                setState(() {
+                  _hasLocationPermission = true;
+                });
+                await _initializeLocationTracking();
+                _showMessage('Izin lokasi diberikan', AppColors.primary);
+              } else {
+                print('❌ Permission denied');
+                _showMessage('Izin lokasi ditolak. Fitur navigasi tidak tersedia.', Colors.red);
+              }
+            },
+            child: Text('Berikan Izin'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _startNavigation() async {
@@ -2993,10 +3091,33 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
       return;
     }
 
+    print('🚀 Starting navigation...');
+    print('Location mode: $_locationMode');
+    print('Use current location: $useCurrentLocation');
+    print('Current position: $_currentPosition');
+    print('Custom start location: $_customStartLocation');
+
     if (useCurrentLocation) {
       if (_currentPosition == null) {
-        _showMessage('navigation_detail.location_unavailable'.tr(), Colors.red);
-        return;
+        print('❌ Current position is null!');
+        print('Position subscription active: ${_positionSubscription != null}');
+        print('Has location permission: $_hasLocationPermission');
+        
+        // Try to get current position immediately
+        try {
+          final position = await geo.Geolocator.getCurrentPosition(
+            desiredAccuracy: geo.LocationAccuracy.high,
+            timeLimit: Duration(seconds: 5),
+          );
+          setState(() {
+            _currentPosition = position;
+          });
+          print('✅ Got current position: ${position.latitude}, ${position.longitude}');
+        } catch (e) {
+          print('❌ Failed to get current position: $e');
+          _showMessage('Tidak dapat mendapatkan lokasi GPS. Pastikan GPS aktif.', Colors.red);
+          return;
+        }
       }
     } else {
       if (startNode == null && startFeature == null) {
@@ -3457,7 +3578,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                           Navigator.pop(context);
                           setState(() {
                             _locationMode = LocationMode.customLocation;
-                            _isSelectingNodeLocation = true;
+                            _isSelectingNodeFromMap = true;
                             _showLocationModePanel = false;
                           });
                           _showMessage('Tap pada node di peta untuk memilih lokasi awal', AppColors.primary);
@@ -3710,11 +3831,129 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
     }
   }
 
+  /// Check if we should show calibration prompt
+  void _checkAndShowCalibrationPrompt() {
+    // Don't show if already shown this session
+    if (_hasShownCalibrationPrompt) return;
+    
+    // Don't show if not at Borobudur
+    if (!_isAtBorobudur) return;
+    
+    // Don't show if barometer not available
+    if (!_isBarometerAvailable) return;
+    
+    // Check calibration state
+    final calibrationState = _barometerService.calibrationState;
+    
+    // Show prompt if:
+    // - No valid calibration, OR
+    // - Only auto-calibration (not manual)
+    if (!calibrationState.isValid || calibrationState.type == CalibrationType.auto) {
+      _hasShownCalibrationPrompt = true;
+      
+      // Delay to avoid showing immediately on screen load
+      Future.delayed(Duration(seconds: 2), () {
+        if (mounted && _isAtBorobudur) {
+          _showSmartCalibrationPrompt();
+        }
+      });
+    }
+  }
+
+  /// Show smart calibration prompt dialog
+  void _showSmartCalibrationPrompt() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.gps_fixed, color: AppColors.primary, size: 28),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Kalibrasi Barometer',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Anda berada di Candi Borobudur.',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Kalibrasi sekarang untuk akurasi level detection terbaik?',
+                style: TextStyle(fontSize: 14),
+              ),
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Pastikan Anda di lantai dasar untuk hasil optimal',
+                        style: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showMessage('Menggunakan auto-kalibrasi (256 mdpl)', Colors.grey);
+              },
+              child: Text('Nanti', style: TextStyle(color: Colors.grey[600])),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                
+                // Manual calibration at current location
+                await _barometerService.calibrateForBorobudur(
+                  knownAltitude: 256.0,
+                  calibrationType: CalibrationType.manual,
+                );
+                
+                _showMessage('✅ Kalibrasi berhasil! Level detection siap.', AppColors.primary);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text('Kalibrasi', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _calibrateBarometer() {
     if (!_isBarometerAvailable) {
       _showMessage('Barometer not available', Colors.red);
       return;
     }
+
+    final TextEditingController altitudeController = TextEditingController(text: '265');
 
     showDialog(
       context: context,
@@ -3738,8 +3977,8 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Current altitude: ${_currentAltitude.toStringAsFixed(1)}m',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  'Current altitude: ${(_currentAltitude < 0 ? 0 : _currentAltitude).toStringAsFixed(1)}m (relatif) / ${_currentAbsoluteAltitude.toStringAsFixed(0)}m mdpl',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                 ),
                 SizedBox(height: 20),
                 Text(
@@ -3748,48 +3987,91 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                 ),
                 SizedBox(height: 16),
                 
-                // Auto Borobudur option
-                InkWell(
-                  onTap: () {
-                    _barometerService.calibrateForBorobudur();
-                    _showMessage('Barometer calibrated for Borobudur (265m)', AppColors.primary);
-                    Navigator.pop(context);
-                  },
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primary, width: 2),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.temple_buddhist, color: AppColors.primary, size: 32),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Auto Borobudur',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
+                // Auto Borobudur option with editable altitude
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary, width: 2),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.temple_buddhist, color: AppColors.primary, size: 32),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Auto Borobudur',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Calibrate for Candi Borobudur (265m mdpl)',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                                SizedBox(height: 4),
+                                Text(
+                                  'Kalibrasi untuk Candi Borobudur. Masukkan ketinggian rata-rata Borobudur (mdpl).',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Ketinggian relatif akan disesuaikan berdasarkan nilai ini.',
+                                  style: TextStyle(fontSize: 10, color: Colors.grey[500], fontStyle: FontStyle.italic),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: altitudeController,
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                labelText: 'Altitude (mdpl)',
+                                hintText: '265',
+                                suffixText: 'm',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () {
+                              final altitudeText = altitudeController.text.trim();
+                              final altitude = double.tryParse(altitudeText);
+                              
+                              if (altitude == null || altitude <= 0) {
+                                _showMessage('Please enter a valid altitude', Colors.red);
+                                return;
+                              }
+                              
+                              _barometerService.calibrateForBorobudur(knownAltitude: altitude);
+                              _showMessage('Barometer calibrated for ${altitude.toStringAsFixed(0)}m mdpl', AppColors.primary);
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            ),
+                            child: Text('Set'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 
@@ -4087,12 +4369,16 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Ketinggian: ',
+                          'Relatif: ',
                           style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                         ),
                         Text(
-                          '${_currentAltitude.toStringAsFixed(1)}m',
+                          '${(_currentAltitude < 0 ? 0 : _currentAltitude).toStringAsFixed(1)}m',
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87),
+                        ),
+                        Text(
+                          ' (${_currentAbsoluteAltitude.toStringAsFixed(0)}m mdpl)',
+                          style: TextStyle(fontSize: 9, color: Colors.grey[500]),
                         ),
                       ],
                     ),
@@ -4169,7 +4455,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
             ),
           
           // Node selection mode indicator
-          if (_isSelectingNodeLocation)
+          if (_isSelectingNodeFromMap)
             Positioned(
               top: 80,
               left: 16,
@@ -4203,7 +4489,7 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
                       icon: Icon(Icons.close, color: Colors.white),
                       onPressed: () {
                         setState(() {
-                          _isSelectingNodeLocation = false;
+                          _isSelectingNodeFromMap = false;
                         });
                       },
                     ),
@@ -4237,6 +4523,51 @@ class _Mapbox3DNavigationScreenState extends State<Mapbox3DNavigationScreen>
               left: 16,
               right: 16,
               child: _buildNavigationPreviewPanel(),
+            ),
+
+          // Quick Re-calibrate Button (only at Borobudur)
+          if (_isAtBorobudur && _isBarometerAvailable)
+            Positioned(
+              bottom: showNavigationPreview || (destinationNode != null || destinationFeature != null) ? 100 : 24,
+              right: 16,
+              child: FloatingActionButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: Text('Kalibrasi Ulang?'),
+                        content: Text('Kalibrasi barometer di lokasi ini sebagai lantai dasar (0m)?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text('Batal'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              
+                              await _barometerService.calibrateForBorobudur(
+                                knownAltitude: 256.0,
+                                calibrationType: CalibrationType.manual,
+                              );
+                              
+                              _showMessage('✅ Kalibrasi berhasil!', AppColors.primary);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                            ),
+                            child: Text('Kalibrasi'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                backgroundColor: AppColors.primary,
+                child: Icon(Icons.gps_fixed, color: Colors.white),
+                tooltip: 'Kalibrasi Ulang',
+              ),
             ),
 
           // Loading overlay
